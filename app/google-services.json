@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1073131619347",
+    "project_id": "whereit-2da19",
+    "storage_bucket": "whereit-2da19.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1073131619347:android:27ef8b9cb30066d39b2be6",
+        "android_client_info": {
+          "package_name": "com.group6.whereit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_whvIO7k8_g_NSp3oO_Y6C5IYJFz8_H4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
