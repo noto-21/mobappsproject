@@ -5,38 +5,43 @@ import android.content.Context
 import android.location.Location
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.tasks.await
 
-class LocationService(context: Context) {
-
+class LocationService(context: Context)
+{
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(context)
 
     private var currentTimestamp: Long = 0L
 
-    /**
-     * Retrieves the current location using the device's GPS sensor.
-     * Note: Ensure location permissions are granted by the user before calling this.
-     */
     @SuppressLint("MissingPermission")
-    suspend fun getCurrentLocation(): Location? {
-        return try {
-            // Fetches the most recent location available
-            fusedLocationClient.lastLocation.await()
-        } catch (e: Exception) {
+    suspend fun getCurrentLocation(): Location?
+    {
+        return try
+        {
+            // Actively fetches a fresh location update
+            fusedLocationClient.getCurrentLocation(
+                Priority.PRIORITY_HIGH_ACCURACY,
+                CancellationTokenSource().token
+            ).await()
+        }
+        catch (e: Exception)
+        {
             e.printStackTrace()
+
             null
         }
     }
 
-    /**
-     * Sets a timestamp for the location tracking event.
-     */
-    fun setTimestamp(timestamp: Long = System.currentTimeMillis()) {
+    fun setTimestamp(timestamp: Long = System.currentTimeMillis())
+    {
         this.currentTimestamp = timestamp
     }
 
-    fun getTimestamp(): Long {
+    fun getTimestamp(): Long
+    {
         return currentTimestamp
     }
 }

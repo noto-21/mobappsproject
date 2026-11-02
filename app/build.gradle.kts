@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -12,6 +15,13 @@ android {
         version = release(37)
     }
 
+    // Read local.properties
+    val localProperties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localProperties.load(FileInputStream(localPropertiesFile))
+    }
+
     defaultConfig {
         applicationId = "com.group6.whereit"
         minSdk = 24
@@ -20,6 +30,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Inject the API key into the manifest
+        val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
@@ -54,14 +68,17 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation(libs.androidx.appcompat)
 
     // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-analytics")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.analytics)
 
     // Location services
-    implementation("com.google.android.gms:play-services-location:21.4.0")
-    implementation("com.google.android.gms:play-services-maps:20.1.0")
+    implementation(libs.play.services.location)
+    implementation(libs.play.services.maps)
+
+    implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.androidx.lifecycle.runtime.ktx.v262)
 }
