@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
@@ -14,6 +15,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.WhereIt">
+
+        <uses-library android:name="org.apache.http.legacy" android:required="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -22,13 +26,16 @@
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".MapActivity"
+            android:exported="false"
+            android:theme="@style/Theme.WhereIt" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDku_getp4bhJ7M-Wok3-QEVdReBM0kuwU" />
+            android:value="${MAPS_API_KEY}" />
     </application>
 
 </manifest>

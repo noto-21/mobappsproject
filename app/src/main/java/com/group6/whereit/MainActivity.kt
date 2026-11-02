@@ -1,47 +1,64 @@
 package com.group6.whereit
 
+import android.Manifest
+import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.group6.whereit.ui.theme.WhereItTheme
+import android.widget.Button
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            WhereItTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var locationService: LocationService
+
+    // Register the permission launcher
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            fetchAndShowLocation()
+        } else {
+            Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
         }
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    WhereItTheme {
-        Greeting("Android")
+        locationService = LocationService(this)
+
+        findViewById<Button>(R.id.btnTestLocation).setOnClickListener {
+            // Launch the permission request dialog
+            requestPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+
+        findViewById<Button>(R.id.btnOpenMap).setOnClickListener {
+            startActivity(Intent(this, MapActivity::class.java))
+        }
+    }
+
+    private fun fetchAndShowLocation() {
+        lifecycleScope.launch {
+            val location = locationService.getCurrentLocation()
+            if (location != null) {
+                Toast.makeText(
+                    this@MainActivity,
+                    "Lat: ${location.latitude}, Lng: ${location.longitude}",
+                    Toast.LENGTH_LONG
+                ).show()
+            } else {
+                Toast.makeText(this@MainActivity, "Location is null. Check emulator settings.", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 }
