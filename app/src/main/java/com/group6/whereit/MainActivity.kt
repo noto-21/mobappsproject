@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.group6.whereit.camera.CameraFlow
 import com.group6.whereit.ui.theme.WhereItTheme
 
 class MainActivity : ComponentActivity() {
@@ -20,8 +21,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             WhereItTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
+                    CameraFlow(
+                        onItemSaved = { path, description, dueDate ->
+                            android.util.Log.d("WhereIt", "Saved: $path | $description | $dueDate")
+                        },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
