@@ -22,8 +22,8 @@ class MainActivity : ComponentActivity() {
             WhereItTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     CameraFlow(
-                        onItemSaved = { path, description, dueDate ->
-                            android.util.Log.d("WhereIt", "Saved: $path | $description | $dueDate")
+                        onItemSaved = { mediaPath, isVideo, description, dueDate ->
+                            android.util.Log.d("WhereIt", "Saved: (video=$isVideo): $mediaPath | $description | $dueDate")
                         },
                         modifier = Modifier.padding(innerPadding)
                     )

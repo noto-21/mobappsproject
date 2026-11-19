@@ -11,34 +11,42 @@ import androidx.compose.ui.platform.LocalContext
 import java.io.File
 
 /**
-    Camera feature entry point: take photo -> fill in item details -> save.
+    Camera feature entry point: take photo or video -> fill in item details -> save.
     onItemSaved is where the database (SpotItem repository) plugs in.
  */
 @Composable
 fun CameraFlow(
-    onItemSaved: (photoPath: String, description: String, dueDateMillis: Long?) -> Unit,
+    onItemSaved: (mediaPath: String, isVideo: Boolean, description: String, dueDateMillis: Long?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var photoPath by rememberSaveable { mutableStateOf<String?>(null) }
+    var mediaPath by rememberSaveable { mutableStateOf<String?>(null) }
+    var isVideo by rememberSaveable { mutableStateOf(false) }
 
-    val currentPath = photoPath
+    val currentPath = mediaPath
+    //mediaPath is a simple state switch to go between CameraScreen and ItemCreationScreen
     if (currentPath == null) {
         CameraScreen(
-            onPhotoTaken = { path -> photoPath = path },
+            onMediaCaptured = { path, video ->
+                mediaPath = path
+                isVideo = video
+            },
             modifier = modifier
         )
     } else {
         ItemCreationScreen(
-            photoPath = currentPath,
+            mediaPath = currentPath,
+            isVideo = isVideo,
             onSave = { description, dueDate ->
-                onItemSaved(currentPath, description, dueDate)
+                onItemSaved(currentPath, isVideo, description, dueDate)
                 Toast.makeText(context, "Item saved", Toast.LENGTH_SHORT).show()
-                photoPath = null            // back to the camera for the next item
+                mediaPath = null            // back to the camera for the next item
+                isVideo = false
             },
             onRetake = {
                 File(currentPath).delete()  // throw away the unused photo
-                photoPath = null
+                mediaPath = null
+                isVideo = false
             },
             modifier = modifier
         )

@@ -42,12 +42,20 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+//imports for video
+import android.net.Uri
+import android.widget.MediaController
+import android.widget.VideoView
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.viewinterop.AndroidView
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemCreationScreen(
-    photoPath: String,
+    mediaPath: String,
+    isVideo: Boolean,
     onSave: (description: String, dueDateMillis: Long?) -> Unit,
     onRetake: () -> Unit,
     modifier: Modifier = Modifier
@@ -92,15 +100,34 @@ fun ItemCreationScreen(
     ) {
         Text("New Item", style = MaterialTheme.typography.headlineSmall)
 
-
-        AsyncImage(
-            model = File(photoPath),
-            contentDescription = "Photo of the item",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(140.dp)
-                .align(Alignment.CenterHorizontally)
-        )
+        if (isVideo){
+            AndroidView(
+                factory = { ctx ->
+                    VideoView(ctx).apply {
+                        val controller = MediaController(ctx)
+                        controller.setAnchorView(this)
+                        setMediaController(controller)
+                        setVideoURI(Uri.fromFile(File(mediaPath)))
+                        setOnPreparedListener { mp ->
+                            mp.isLooping = true
+                            start() // Auto-plays muted or displays looped preview
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+            )
+        } else {
+            AsyncImage(
+                model = File(mediaPath),
+                contentDescription = "Photo of the item",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(140.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
+        }
 
         OutlinedTextField(
             value = description,
