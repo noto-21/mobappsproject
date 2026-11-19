@@ -4,44 +4,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import com.google.firebase.auth.FirebaseAuth
+import com.group6.whereit.data.SpotRepository
+import com.group6.whereit.data.WhereItDatabase
+import com.group6.whereit.ui.items.ItemsListScreen
 import com.group6.whereit.ui.theme.WhereItTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val db = WhereItDatabase.getInstance(this)
+        val repository = SpotRepository(db.spotItemDao())
+
+        // Real Firebase user once Essa's login is merged; test ID until then.
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "test-user"
+
         setContent {
             WhereItTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                ItemsListScreen(repository = repository, userId = userId)
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    WhereItTheme {
-        Greeting("Android")
     }
 }
