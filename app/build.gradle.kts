@@ -62,6 +62,9 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-analytics")
 
+    // Firebase UI library for pre made login and signup screens
+    implementation("com.firebaseui:firebase-ui-auth:9.1.1")
+
     // Room (local SQLite database)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
