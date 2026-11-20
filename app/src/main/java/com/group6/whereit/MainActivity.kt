@@ -3,6 +3,14 @@ package com.group6.whereit
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import com.google.firebase.auth.FirebaseAuth
+import com.group6.whereit.data.SpotRepository
+import com.group6.whereit.data.WhereItDatabase
+import com.group6.whereit.ui.items.ItemsListScreen
+import com.group6.whereit.ui.theme.WhereItTheme
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -11,7 +19,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity()
-{
+{ 
     private lateinit var locationService: LocationService
 
     // Register the permission launcher
@@ -31,6 +39,20 @@ class MainActivity : AppCompatActivity()
     {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        
+        enableEdgeToEdge()
+
+        val db = WhereItDatabase.getInstance(this)
+        val repository = SpotRepository(db.spotItemDao())
+
+        // Real Firebase user once Essa's login is merged; test ID until then.
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "test-user"
+
+        setContent {
+            WhereItTheme {
+                ItemsListScreen(repository = repository, userId = userId)
+            }
+        }
 
         locationService = LocationService(this)
 
