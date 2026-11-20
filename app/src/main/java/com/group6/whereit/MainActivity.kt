@@ -1,6 +1,20 @@
 
 package com.group6.whereit
 
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import com.group6.whereit.camera.CameraFlow
+import com.group6.whereit.ui.theme.WhereItTheme
+
 // ANDROID ACTIVITY AND NAVIGATION
 import android.Manifest // access Android permissions
 import android.content.Intent // opens another Activity
@@ -76,6 +90,12 @@ class MainActivity : AppCompatActivity() {
         setContent {
 
             WhereItTheme {
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    CameraFlow(
+                        onItemSaved = { mediaPath, isVideo, description, dueDate ->
+                            android.util.Log.d("WhereIt", "Saved: (video=$isVideo): $mediaPath | $description | $dueDate")
+                        },
+                        modifier = Modifier.padding(innerPadding)
 
                 // check whether Firebase already has a signed-in user
                 val isLoggedIn = remember {
