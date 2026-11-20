@@ -3,34 +3,40 @@ package com.group6.whereit
 
 // ANDROID ACTIVITY AND NAVIGATION
 import android.Manifest // access Android permissions
-import android.content.Intent // used to open another Activity
+import android.content.Intent // opens another Activity
 import android.os.Bundle // stores saved Activity state
 import android.widget.Toast // displays temporary messages
 import androidx.appcompat.app.AppCompatActivity // base class for MainActivity
-import androidx.activity.compose.setContent // displays Compose UI inside Activity
-import androidx.activity.result.contract.ActivityResultContracts // handles permission request results
+import androidx.activity.compose.setContent // displays Compose UI
+import androidx.activity.result.contract.ActivityResultContracts // handles permission results
 
 // JETPACK COMPOSE - UI COMPONENTS
-import androidx.compose.material3.Text // displays text on screen
+import androidx.compose.material3.Text // displays text
 import androidx.compose.material3.Button // creates clickable buttons
 
-// JETPACK COMPOSE - LAYOUT AND POSITIONING
-import androidx.compose.foundation.layout.Column // arranges UI elements vertically
-import androidx.compose.foundation.layout.Arrangement // controls vertical positioning
-import androidx.compose.foundation.layout.fillMaxSize // fills available screen space
-import androidx.compose.ui.Alignment // controls horizontal alignment
-import androidx.compose.ui.Modifier // changes UI element size, spacing, etc.
+// JETPACK COMPOSE - LAYOUT
+import androidx.compose.foundation.layout.Column // arranges elements vertically
+import androidx.compose.foundation.layout.Row // arranges elements horizontally
+import androidx.compose.foundation.layout.Arrangement // controls positioning
+import androidx.compose.foundation.layout.fillMaxWidth // fills available width
+import androidx.compose.ui.Modifier // changes layout properties
 
-// JETPACK COMPOSE - STATE MANAGEMENT
-import androidx.compose.runtime.remember // preserves values across recompositions
-import androidx.compose.runtime.mutableStateOf // creates observable state that triggers UI updates
+// JETPACK COMPOSE - STATE
+import androidx.compose.runtime.remember // preserves state across recompositions
+import androidx.compose.runtime.mutableStateOf // creates observable state
 
 // FIREBASE AUTHENTICATION
-import com.google.firebase.auth.FirebaseAuth // checks signed-in users and handles sign out
+import com.google.firebase.auth.FirebaseAuth // manages Firebase user sessions
 
-// LOCATION - ASYNCHRONOUS OPERATIONS
-import androidx.lifecycle.lifecycleScope // launches coroutines tied to the Activity lifecycle
-import kotlinx.coroutines.launch // starts coroutine for location retrieval
+// ITEM LIBRARY AND DATABASE
+import com.group6.whereit.data.SpotRepository // provides access to stored items
+import com.group6.whereit.data.WhereItDatabase // local Room database
+import com.group6.whereit.ui.items.ItemsListScreen // displays the item library
+import com.group6.whereit.ui.theme.WhereItTheme // app's Compose theme
+
+// LOCATION AND COROUTINES
+import androidx.lifecycle.lifecycleScope // launches lifecycle-aware coroutines
+import kotlinx.coroutines.launch // runs asynchronous location operations
 
 
 class MainActivity : AppCompatActivity() {
@@ -38,7 +44,7 @@ class MainActivity : AppCompatActivity() {
     // location service used to retrieve device location
     private lateinit var locationService: LocationService
 
-    // register a launcher to request location permissions and receive the result
+    // register a launcher to request location permissions
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions: Map<String, Boolean> ->
@@ -51,7 +57,6 @@ class MainActivity : AppCompatActivity() {
             fetchAndShowLocation()
         }
         else {
-            // permission denied
             Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
         }
     }
@@ -63,80 +68,93 @@ class MainActivity : AppCompatActivity() {
         // initialize the location service
         locationService = LocationService(this)
 
+        // initialize the database and item repository
+        val db = WhereItDatabase.getInstance(this)
+        val repository = SpotRepository(db.spotItemDao())
+
         // display the Jetpack Compose interface
         setContent {
 
-            // check whether Firebase already has a signed-in user
-            val isLoggedIn = remember {
+            WhereItTheme {
 
-                // currentUser returns the signed-in user, or null if nobody is signed in
-                // != null returns true when a signed-in user exists
-                // mutableStateOf creates observable state
-                // remember preserves this state across recompositions
-                // users with an existing session can skip the login screen
-                mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
-            }
+                // check whether Firebase already has a signed-in user
+                val isLoggedIn = remember {
+                    mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
+                }
 
-            if (isLoggedIn.value) {
+                if (isLoggedIn.value) {
 
-                // temporary home screen until final navigation is implemented
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                    // get the unique Firebase ID of the signed-in user
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-                    Text("Welcome to WhereIt!")
+                    if (userId != null) {
 
-                    // button to request location permissions and test location retrieval
-                    Button(
-                        onClick = {
-                            requestPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
+                        // display the item library and navigation buttons
+                        Column {
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+
+                                // button to request location and test retrieval
+                                Button(
+                                    onClick = {
+                                        requestPermissionLauncher.launch(
+                                            arrayOf(
+                                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                                Manifest.permission.ACCESS_COARSE_LOCATION
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Text("Test Location")
+                                }
+
+                                // button to open the map
+                                Button(
+                                    onClick = {
+                                        startActivity(
+                                            Intent(
+                                                this@MainActivity,
+                                                MapActivity::class.java
+                                            )
+                                        )
+                                    }
+                                ) {
+                                    Text("Open Map")
+                                }
+
+                                // button to sign out
+                                Button(
+                                    onClick = {
+                                        FirebaseAuth.getInstance().signOut()
+                                        isLoggedIn.value = false
+                                    }
+                                ) {
+                                    Text("Sign Out")
+                                }
+                            }
+
+                            // display items belonging to the signed-in user
+                            ItemsListScreen(
+                                repository = repository,
+                                userId = userId
                             )
                         }
-                    ) {
-                        Text("Test Location")
-                    }
-
-                    // button to open the map screen
-                    Button(
-                        onClick = {
-                            startActivity(
-                                Intent(this@MainActivity, MapActivity::class.java)
-                            )
-                        }
-                    ) {
-                        Text("Open Map")
-                    }
-
-                    // button to sign out of Firebase
-                    Button(
-                        onClick = {
-                            // sign out the currently authenticated Firebase user
-                            FirebaseAuth.getInstance().signOut()
-
-                            // update UI state to display the login screen
-                            isLoggedIn.value = false
-                        }
-                    ) {
-                        Text("Sign Out")
                     }
                 }
-            }
-            else {
+                else {
 
-                // display the authentication screen when no user is signed in
-                AuthScreen(
-                    onAuthSuccess = {
-                        // called after successful Firebase login or signup
-                        // update state to display the temporary home screen
-                        isLoggedIn.value = true
-                    }
-                )
+                    // display login/signup screen when nobody is signed in
+                    AuthScreen(
+                        onAuthSuccess = {
+                            // Firebase authentication succeeded
+                            // update the state to display the item library
+                            isLoggedIn.value = true
+                        }
+                    )
+                }
             }
         }
     }
@@ -145,14 +163,14 @@ class MainActivity : AppCompatActivity() {
     // retrieve the device's current location and display its coordinates
     private fun fetchAndShowLocation() {
 
-        // launch coroutine to retrieve location without blocking the UI
+        // launch coroutine without blocking the UI
         lifecycleScope.launch {
 
             val location = locationService.getCurrentLocation()
 
             if (location != null) {
 
-                // display the retrieved latitude and longitude
+                // display latitude and longitude
                 Toast.makeText(
                     this@MainActivity,
                     "Lat: ${location.latitude}, Lng: ${location.longitude}",
@@ -161,7 +179,7 @@ class MainActivity : AppCompatActivity() {
             }
             else {
 
-                // display message if location could not be retrieved
+                // display message if location cannot be retrieved
                 Toast.makeText(
                     this@MainActivity,
                     "Location is null. Check emulator settings.",
