@@ -1,19 +1,4 @@
-
 package com.group6.whereit
-
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.group6.whereit.camera.CameraFlow
-import com.group6.whereit.ui.theme.WhereItTheme
 
 // ANDROID ACTIVITY AND NAVIGATION
 import android.Manifest // access Android permissions
@@ -34,6 +19,7 @@ import androidx.compose.foundation.layout.Row // arranges elements horizontally
 import androidx.compose.foundation.layout.Arrangement // controls positioning
 import androidx.compose.foundation.layout.fillMaxWidth // fills available width
 import androidx.compose.ui.Modifier // changes layout properties
+import androidx.compose.foundation.layout.fillMaxSize // fills available screen space
 
 // JETPACK COMPOSE - STATE
 import androidx.compose.runtime.remember // preserves state across recompositions
@@ -51,6 +37,11 @@ import com.group6.whereit.ui.theme.WhereItTheme // app's Compose theme
 // LOCATION AND COROUTINES
 import androidx.lifecycle.lifecycleScope // launches lifecycle-aware coroutines
 import kotlinx.coroutines.launch // runs asynchronous location operations
+
+// CAMERA
+import com.group6.whereit.camera.CameraFlow
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 
 
 class MainActivity : AppCompatActivity() {
@@ -89,14 +80,14 @@ class MainActivity : AppCompatActivity() {
         // display the Jetpack Compose interface
         setContent {
 
-            WhereItTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    CameraFlow(
-                        onItemSaved = { mediaPath, isVideo, description, dueDate ->
-                            android.util.Log.d("WhereIt", "Saved: (video=$isVideo): $mediaPath | $description | $dueDate")
-                        },
-                        modifier = Modifier.padding(innerPadding)
-
+            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                CameraFlow(
+                    onItemSaved = { mediaPath, isVideo, description, dueDate ->
+                        android.util.Log.d("WhereIt", "Saved: (video=$isVideo): $mediaPath | $description | $dueDate")
+                    },
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
                 // check whether Firebase already has a signed-in user
                 val isLoggedIn = remember {
                     mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
@@ -176,7 +167,7 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }
-        }
+
     }
 
 
