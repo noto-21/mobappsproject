@@ -3,7 +3,7 @@
 
     <style name="Theme.WhereIt" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimary">@color/periwinkle_secondary</item>
     </style>
 
 </resources>
