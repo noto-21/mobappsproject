@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf // creates observable state
 import com.google.firebase.auth.FirebaseAuth // manages Firebase user sessions
 
 // ITEM LIBRARY AND DATABASE
+import com.group6.whereit.data.SpotItem // one saved item (database row)
 import com.group6.whereit.data.SpotRepository // provides access to stored items
 import com.group6.whereit.data.WhereItDatabase // local Room database
 import com.group6.whereit.ui.items.ItemsListScreen // displays the item library
@@ -40,8 +41,6 @@ import kotlinx.coroutines.launch // runs asynchronous location operations
 
 // CAMERA
 import com.group6.whereit.camera.CameraFlow
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 
 import androidx.compose.runtime.LaunchedEffect // runs asynchronous code inside Compose
 
@@ -123,24 +122,9 @@ class MainActivity : AppCompatActivity() {
                         }
 
 
-                        if (currentScreen.value == "camera") {
-
-                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                                CameraFlow(
-                                    onItemSaved = { mediaPath, isVideo, description, dueDate ->
-                                        android.util.Log.d(
-                                            "WhereIt",
-                                            "Saved: (video=$isVideo): $mediaPath | $description | $dueDate"
-                                        )
-                                    },
-                                    modifier = Modifier.padding(innerPadding)
-                                )
-                            }
-                        }
-
-
-                        // display the item library and navigation buttons
-                        Column {
+                        // display the navigation buttons with the current screen underneath
+                        // (one Column, so the camera no longer draws on top of the buttons)
+                        Column(modifier = Modifier.fillMaxSize()) {
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -208,13 +192,49 @@ class MainActivity : AppCompatActivity() {
 
                             }
 
+                            if (currentScreen.value == "camera") {
+
+                                CameraFlow(
+                                    onItemSaved = { mediaPath, isVideo, description, dueDate,
+                                                    locationName, latitude, longitude ->
+
+                                        // database calls are asynchronous, so run them in a coroutine
+                                        lifecycleScope.launch {
+
+                                            // save the new item to the Room database
+                                            repository.save(
+                                                SpotItem(
+                                                    userId = userId,
+                                                    photoPath = mediaPath,
+                                                    description = description,
+                                                    latitude = latitude,
+                                                    longitude = longitude,
+                                                    locationName = locationName,
+                                                    dueDate = dueDate,
+                                                    isVideo = isVideo
+                                                )
+                                            )
+
+                                            // send the user to the item library to see the new item
+                                            currentScreen.value = "library"
+                                        }
+                                    },
+                                    // take up the rest of the screen below the buttons
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
                             if (currentScreen.value == "library"){
 
                             // display items belonging to the signed-in user
                                 ItemsListScreen(
 
                                     repository = repository,
-                                    userId = userId
+                                    userId = userId,
+                                    // + button sends the user to the camera to make a new item
+                                    onAddItem = { currentScreen.value = "camera" },
+                                    // take up the rest of the screen below the buttons
+                                    modifier = Modifier.weight(1f)
                                 )
 
                           }

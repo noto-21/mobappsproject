@@ -6,7 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 // Lists every table and creates the actual SQLite file (whereit.db) on the phone.
-@Database(entities = [SpotItem::class], version = 1)
+// version 2: added locationName, dueDate and isVideo to SpotItem
+@Database(entities = [SpotItem::class], version = 2)
 abstract class WhereItDatabase : RoomDatabase() {
 
     abstract fun spotItemDao(): SpotItemDao
@@ -21,7 +22,11 @@ abstract class WhereItDatabase : RoomDatabase() {
                     context.applicationContext,
                     WhereItDatabase::class.java,
                     "whereit.db"
-                ).build().also { INSTANCE = it }
+                )
+                    // When the table changes (version bump), wipe and recreate the test database
+                    // instead of crashing. Fine while developing; old test items are cleared.
+                    .fallbackToDestructiveMigration()
+                    .build().also { INSTANCE = it }
             }
     }
 }

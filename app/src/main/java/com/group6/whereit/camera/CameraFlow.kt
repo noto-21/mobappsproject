@@ -16,7 +16,15 @@ import java.io.File
  */
 @Composable
 fun CameraFlow(
-    onItemSaved: (mediaPath: String, isVideo: Boolean, description: String, dueDateMillis: Long?) -> Unit,
+    onItemSaved: (
+        mediaPath: String,
+        isVideo: Boolean,
+        description: String,
+        dueDateMillis: Long?,
+        locationName: String?,
+        latitude: Double?,
+        longitude: Double?
+    ) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -37,10 +45,11 @@ fun CameraFlow(
         ItemCreationScreen(
             mediaPath = currentPath,
             isVideo = isVideo,
-            onSave = { description, dueDate ->
-                onItemSaved(currentPath, isVideo, description, dueDate)
+            onSave = { description, dueDate, locationName, latitude, longitude ->
+                // MainActivity saves the item to the database and switches to the item library
+                onItemSaved(currentPath, isVideo, description, dueDate, locationName, latitude, longitude)
                 Toast.makeText(context, "Item saved", Toast.LENGTH_SHORT).show()
-                mediaPath = null            // back to the camera for the next item
+                mediaPath = null            // reset so the camera starts fresh next time
                 isVideo = false
             },
             onRetake = {

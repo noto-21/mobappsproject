@@ -43,6 +43,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.graphics.Color
@@ -181,16 +183,30 @@ fun CameraScreen(
         ) {
             // Hide mode switcher while actively recording
             if (activeRecording == null) {
+                // Solid backgrounds + a border so both chips look like buttons on top of the
+                // camera preview (the default unselected chip is transparent and hard to see)
+                val chipColors = FilterChipDefaults.filterChipColors(
+                    containerColor = Color.Black.copy(alpha = 0.6f),
+                    labelColor = Color.White,
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
+                val chipBorder = BorderStroke(1.dp, Color.White)
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = !isVideoMode,
                         onClick = { isVideoMode = false },
-                        label = { Text("Photo") }
+                        label = { Text("📷 Photo") },
+                        colors = chipColors,
+                        border = chipBorder
                     )
                     FilterChip(
                         selected = isVideoMode,
                         onClick = { isVideoMode = true },
-                        label = { Text("Video") }
+                        label = { Text("🎥 Video") },
+                        colors = chipColors,
+                        border = chipBorder
                     )
                 }
             }

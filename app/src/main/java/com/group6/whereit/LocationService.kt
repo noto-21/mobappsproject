@@ -8,6 +8,14 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.tasks.await
+import android.location.Address
+import android.location.Geocoder
+import android.os.Build
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import java.util.Locale
+import kotlin.coroutines.resume
 
 /**
  * A service class responsible for fetching the device's current geographical location
@@ -15,7 +23,7 @@ import kotlinx.coroutines.tasks.await
  *
  * @param context The application or activity context needed to initialize the location provider.
  */
-class LocationService(context: Context)
+class LocationService(private val context: Context)
 {
     // The main entry point for interacting with the fused location provider.
     // FusedLocationProviderClient intelligently manages underlying location technologies (GPS, Wi-Fi, cell).
@@ -49,6 +57,59 @@ class LocationService(context: Context)
         catch (e: Exception)
         {
             // Log the exception for debugging purposes if the location fetch fails
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * Turns a location's coordinates into a readable address (reverse geocoding),
+     * e.g. "2000 Simcoe St N, Oshawa, ON L1G 0C5, Canada".
+     *
+     * @return The address, or null if the device has no geocoder or no address was found.
+     */
+    suspend fun getAddress(location: Location): String? = withContext(Dispatchers.IO)
+    {
+        if (!Geocoder.isPresent()) return@withContext null
+
+        val geocoder = Geocoder(context, Locale.getDefault())
+
+        try
+        {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            {
+                // Android 13+: the geocoder answers through a listener
+                suspendCancellableCoroutine { continuation ->
+                    geocoder.getFromLocation(
+                        location.latitude,
+                        location.longitude,
+                        1,
+                        object : Geocoder.GeocodeListener
+                        {
+                            override fun onGeocode(addresses: MutableList<Address>)
+                            {
+                                continuation.resume(addresses.firstOrNull()?.getAddressLine(0))
+                            }
+
+                            override fun onError(errorMessage: String?)
+                            {
+                                continuation.resume(null)
+                            }
+                        }
+                    )
+                }
+            }
+            else
+            {
+                // Older Android: blocking call, which is why this runs on Dispatchers.IO
+                @Suppress("DEPRECATION")
+                geocoder.getFromLocation(location.latitude, location.longitude, 1)
+                    ?.firstOrNull()
+                    ?.getAddressLine(0)
+            }
+        }
+        catch (e: Exception)
+        {
             e.printStackTrace()
             null
         }

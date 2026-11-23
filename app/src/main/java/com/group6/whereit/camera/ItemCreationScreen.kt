@@ -49,6 +49,14 @@ import android.widget.VideoView
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.viewinterop.AndroidView
+//imports for location
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.core.content.ContextCompat
+import com.group6.whereit.LocationService
+import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,15 +64,89 @@ import androidx.compose.ui.viewinterop.AndroidView
 fun ItemCreationScreen(
     mediaPath: String,
     isVideo: Boolean,
-    onSave: (description: String, dueDateMillis: Long?) -> Unit,
+    onSave: (
+        description: String,
+        dueDateMillis: Long?,
+        locationName: String?,
+        latitude: Double?,
+        longitude: Double?
+    ) -> Unit,
     onRetake: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val locationService = remember { LocationService(context) }
 
     var description by rememberSaveable { mutableStateOf("") }
     var dueDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
+
+    // LOCATION: readable address shown in the text field + the coordinates behind it
+    var locationText by rememberSaveable { mutableStateOf("") }
+    var latitude by rememberSaveable { mutableStateOf<Double?>(null) }
+    var longitude by rememberSaveable { mutableStateOf<Double?>(null) }
+    var isLocating by remember { mutableStateOf(false) }
+
+    // gets the current location and puts its address in the location field
+    fun fetchCurrentLocation() {
+        scope.launch {
+            isLocating = true
+            val location = locationService.getCurrentLocation()
+
+            if (location != null) {
+                latitude = location.latitude
+                longitude = location.longitude
+
+                // use the address if one is found, otherwise fall back to the coordinates
+                locationText = locationService.getAddress(location)
+                    ?: String.format(Locale.US, "%.5f, %.5f", location.latitude, location.longitude)
+            } else {
+                Toast.makeText(context, "Couldn't get your location", Toast.LENGTH_SHORT).show()
+            }
+            isLocating = false
+        }
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
+            fetchCurrentLocation()
+        } else {
+            Toast.makeText(context, "Location permission denied, type the location instead", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // checks permission first, then gets the location
+    fun requestCurrentLocation() {
+        val hasPermission =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                    PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                    PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            fetchCurrentLocation()
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    // fill in the current location automatically when the screen opens
+    // (skipped if we already have one, e.g. after rotating the phone)
+    LaunchedEffect(Unit) {
+        if (latitude == null && locationText.isBlank()) {
+            requestCurrentLocation()
+        }
+    }
 
 
     val speechLauncher = rememberLauncherForActivityResult(
@@ -149,7 +231,23 @@ fun ItemCreationScreen(
             TextButton(onClick = { dueDateMillis = null }) { Text("Clear due date") }
         }
 
-        // TODO: location field (handled by location teammate)
+        // LOCATION: filled with the current location's address, user can edit it
+        OutlinedTextField(
+            value = locationText,
+            onValueChange = { locationText = it },
+            label = { Text("Location") },
+            placeholder = { Text("e.g. Kitchen, top drawer") },
+            supportingText = {
+                if (isLocating) Text("Getting current location...")
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedButton(
+            onClick = { requestCurrentLocation() },
+            enabled = !isLocating
+        ) {
+            Text("📍 Use current location")
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -159,7 +257,15 @@ fun ItemCreationScreen(
                 Text("Retake")
             }
             Button(
-                onClick = { onSave(description.trim(), dueDateMillis) },
+                onClick = {
+                    onSave(
+                        description.trim(),
+                        dueDateMillis,
+                        locationText.trim().ifBlank { null },
+                        latitude,
+                        longitude
+                    )
+                },
                 enabled = description.isNotBlank(),
                 modifier = Modifier.weight(1f)
             ) {
