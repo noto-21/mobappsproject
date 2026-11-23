@@ -43,6 +43,11 @@ import com.group6.whereit.camera.CameraFlow
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 
+import androidx.compose.runtime.LaunchedEffect // runs asynchronous code inside Compose
+
+import androidx.compose.foundation.layout.PaddingValues // controls spacing inside buttons
+import androidx.compose.ui.unit.dp // measures spacing in density-independent pixels
+import androidx.compose.ui.unit.sp // measures text size
 
 class MainActivity : AppCompatActivity() {
 
@@ -80,14 +85,6 @@ class MainActivity : AppCompatActivity() {
         // display the Jetpack Compose interface
         setContent {
 
-            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                CameraFlow(
-                    onItemSaved = { mediaPath, isVideo, description, dueDate ->
-                        android.util.Log.d("WhereIt", "Saved: (video=$isVideo): $mediaPath | $description | $dueDate")
-                    },
-                    modifier = Modifier.padding(innerPadding)
-                )
-            }
                 // check whether Firebase already has a signed-in user
                 val isLoggedIn = remember {
                     mutableStateOf(FirebaseAuth.getInstance().currentUser != null)
@@ -99,6 +96,48 @@ class MainActivity : AppCompatActivity() {
                     val userId = FirebaseAuth.getInstance().currentUser?.uid
 
                     if (userId != null) {
+
+                        // keeps track of which screen the user is on
+                        val currentScreen = remember {
+                            mutableStateOf("loading") // loading is the starting value while database is being checked
+                        }
+
+                        // starts a coroutine that runs when this section first appears and when userID is changed
+                        // need this because db search is asynchronous
+                        LaunchedEffect(userId) {
+
+                            // check if the user has any items saved
+                            val hasItems = repository.hasItems(userId)
+
+                            // if they do, open to their item library
+                            if (hasItems){
+
+                                currentScreen.value = "library"
+                            }
+
+                            // if they don't, open straight to the camera
+                            else{
+
+                                currentScreen.value = "camera"
+                            }
+                        }
+
+
+                        if (currentScreen.value == "camera") {
+
+                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                                CameraFlow(
+                                    onItemSaved = { mediaPath, isVideo, description, dueDate ->
+                                        android.util.Log.d(
+                                            "WhereIt",
+                                            "Saved: (video=$isVideo): $mediaPath | $description | $dueDate"
+                                        )
+                                    },
+                                    modifier = Modifier.padding(innerPadding)
+                                )
+                            }
+                        }
+
 
                         // display the item library and navigation buttons
                         Column {
@@ -117,7 +156,9 @@ class MainActivity : AppCompatActivity() {
                                                 Manifest.permission.ACCESS_COARSE_LOCATION
                                             )
                                         )
-                                    }
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp)
+
                                 ) {
                                     Text("Test Location")
                                 }
@@ -125,15 +166,31 @@ class MainActivity : AppCompatActivity() {
                                 // button to open the map
                                 Button(
                                     onClick = {
+
+                                        currentScreen.value = "map"
+
                                         startActivity(
                                             Intent(
                                                 this@MainActivity,
                                                 MapActivity::class.java
                                             )
                                         )
-                                    }
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp)
+
                                 ) {
                                     Text("Open Map")
+                                }
+
+                                // button to request location and test retrieval
+                                Button(
+                                    onClick = {
+                                        currentScreen.value = "library"
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp)
+
+                                ) {
+                                    Text("Item Library")
                                 }
 
                                 // button to sign out
@@ -141,17 +198,26 @@ class MainActivity : AppCompatActivity() {
                                     onClick = {
                                         FirebaseAuth.getInstance().signOut()
                                         isLoggedIn.value = false
-                                    }
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp)
+
                                 ) {
                                     Text("Sign Out")
                                 }
+
+
                             }
 
+                            if (currentScreen.value == "library"){
+
                             // display items belonging to the signed-in user
-                            ItemsListScreen(
-                                repository = repository,
-                                userId = userId
-                            )
+                                ItemsListScreen(
+
+                                    repository = repository,
+                                    userId = userId
+                                )
+
+                          }
                         }
                     }
                 }

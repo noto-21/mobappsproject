@@ -25,4 +25,7 @@ interface SpotItemDao {
 
     @Query("SELECT * FROM spot_items WHERE id = :id")
     suspend fun getById(id: Long): SpotItem?
+
+    @Query("SELECT COUNT(*) FROM spot_items WHERE userId = :userId")
+    suspend fun hasItems(userId: String): Int
 }

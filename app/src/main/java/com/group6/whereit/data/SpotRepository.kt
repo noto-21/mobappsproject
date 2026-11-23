@@ -17,4 +17,6 @@ class SpotRepository(private val dao: SpotItemDao) {
     fun getActive(userId: String): Flow<List<SpotItem>> = dao.getActiveItems(userId)
 
     suspend fun togglePin(item: SpotItem) = dao.update(item.copy(isPinned = !item.isPinned))
+
+    suspend fun hasItems(userId: String): Boolean = dao.hasItems(userId) > 0
 }
