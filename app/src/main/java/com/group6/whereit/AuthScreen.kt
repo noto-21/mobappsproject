@@ -73,7 +73,7 @@ fun AuthScreen(onAuthSuccess: () -> Unit){
         // center everything horizontally on the screen
         horizontalAlignment = Alignment.CenterHorizontally
 
-    ) { // comlumn contents start under here
+    ) { // column contents start under here
 
 
         Text(
