@@ -10,6 +10,8 @@ class SpotRepository(private val dao: SpotItemDao) {
 
     suspend fun update(item: SpotItem) = dao.update(item)
 
+    suspend fun getById(id: Long): SpotItem? = dao.getById(id)
+
     suspend fun delete(item: SpotItem) = dao.delete(item)
 
     fun getUserItems(userId: String): Flow<List<SpotItem>> = dao.getItemsForUser(userId)

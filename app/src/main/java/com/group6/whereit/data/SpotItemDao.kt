@@ -23,7 +23,7 @@ interface SpotItemDao {
     @Query("SELECT * FROM spot_items WHERE userId = :userId AND isActive = 1 ORDER BY timestamp DESC")
     fun getActiveItems(userId: String): Flow<List<SpotItem>>
 
-    @Query("SELECT * FROM spot_items WHERE id = :id")
+    @Query("SELECT * FROM spot_items WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): SpotItem?
 
     @Query("SELECT COUNT(*) FROM spot_items WHERE userId = :userId")

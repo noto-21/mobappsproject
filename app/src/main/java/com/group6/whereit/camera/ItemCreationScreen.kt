@@ -18,7 +18,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -46,7 +45,6 @@ import java.util.TimeZone
 import android.net.Uri
 import android.widget.MediaController
 import android.widget.VideoView
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.viewinterop.AndroidView
 //imports for location
@@ -59,7 +57,6 @@ import com.group6.whereit.LocationService
 import kotlinx.coroutines.launch
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemCreationScreen(
     mediaPath: String,
@@ -72,14 +69,22 @@ fun ItemCreationScreen(
         longitude: Double?
     ) -> Unit,
     onRetake: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    initialDescription: String = "",
+    initialDueDateMillis: Long? = null,
+    isEditing: Boolean = false
 ) {
     val context = LocalContext.current
+
     val scope = rememberCoroutineScope()
     val locationService = remember { LocationService(context) }
 
-    var description by rememberSaveable { mutableStateOf("") }
-    var dueDateMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    var description by rememberSaveable(
+        initialDescription
+    ) { mutableStateOf(initialDescription) }
+    var dueDateMillis by rememberSaveable(
+        initialDueDateMillis
+    ) { mutableStateOf(initialDueDateMillis) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     // LOCATION: readable address shown in the text field + the coordinates behind it
@@ -148,7 +153,6 @@ fun ItemCreationScreen(
         }
     }
 
-
     val speechLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -170,6 +174,7 @@ fun ItemCreationScreen(
             speechLauncher.launch(intent)
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(context, "Speech input isn't available on this device", Toast.LENGTH_SHORT).show()
+            print(e)
         }
     }
 
@@ -180,36 +185,39 @@ fun ItemCreationScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("New Item", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            text = if (isEditing) "Edit Item" else "New Item",
+            style = MaterialTheme.typography.headlineSmall
+        )
 
-        if (isVideo){
-            AndroidView(
-                factory = { ctx ->
-                    VideoView(ctx).apply {
-                        val controller = MediaController(ctx)
-                        controller.setAnchorView(this)
-                        setMediaController(controller)
-                        setVideoURI(Uri.fromFile(File(mediaPath)))
-                        setOnPreparedListener { mp ->
-                            mp.isLooping = true
-                            start() // Auto-plays muted or displays looped preview
+        if (mediaPath.isNotBlank())
+            if (isVideo)
+                AndroidView(
+                    factory = { ctx ->
+                        VideoView(ctx).apply {
+                            val controller = MediaController(ctx)
+                            controller.setAnchorView(this)
+                            setMediaController(controller)
+                            setVideoURI(Uri.fromFile(File(mediaPath)))
+                            setOnPreparedListener { mp ->
+                                mp.isLooping = true
+                                start() // Automatically plays muted or displays looped preview
+                            }
                         }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-            )
-        } else {
-            AsyncImage(
-                model = File(mediaPath),
-                contentDescription = "Photo of the item",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(140.dp)
-                    .align(Alignment.CenterHorizontally)
-            )
-        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                )
+            else
+                AsyncImage(
+                    model = File(mediaPath),
+                    contentDescription = "Photo of the item",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(140.dp)
+                        .align(Alignment.CenterHorizontally)
+                )
 
         OutlinedTextField(
             value = description,
@@ -254,7 +262,7 @@ fun ItemCreationScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedButton(onClick = onRetake, modifier = Modifier.weight(1f)) {
-                Text("Retake")
+                Text(if (isEditing) "Back" else "Retake")
             }
             Button(
                 onClick = {

@@ -19,6 +19,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import com.group6.whereit.EditItemActivity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +31,7 @@ fun ItemsListScreen(
     onAddItem: () -> Unit,              // called by the + button, MainActivity switches to the camera
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
 
     // Live list from the database. Updates automatically when data changes.
     val items by repository.getUserItems(userId).collectAsState(initial = emptyList())
@@ -54,6 +58,11 @@ fun ItemsListScreen(
                 items(items, key = { it.id }) { item ->
                     SpotItemCard(
                         item = item,
+                        onClick = {
+                            val intent = Intent(context, EditItemActivity::class.java)
+                            intent.putExtra("item_id", item.id)
+                            context.startActivity(intent)
+                        },
                         onTogglePin = { scope.launch { repository.togglePin(item) } },
                         onDelete = { scope.launch { repository.delete(item) } }
                     )
@@ -64,12 +73,19 @@ fun ItemsListScreen(
 }
 
 @Composable
-private fun SpotItemCard(item: SpotItem, onTogglePin: () -> Unit, onDelete: () -> Unit) {
+private fun SpotItemCard(
+    item: SpotItem,
+    onClick: () -> Unit,
+    onTogglePin: () -> Unit,
+    onDelete: () -> Unit
+) {
     val date = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(item.timestamp))
 
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        onClick = onClick,
+        Modifier.fillMaxWidth()
+    ) {
         Row(Modifier.padding(16.dp)) {
-
             // thumbnail: the photo, or a placeholder for videos / items without a photo
             if (item.photoPath.isNotBlank() && !item.isVideo) {
                 AsyncImage(
@@ -125,7 +141,7 @@ private fun SpotItemCard(item: SpotItem, onTogglePin: () -> Unit, onDelete: () -
     }
 }
 
-/** The date picker stores midnight UTC, so format in UTC or it shows a day early in Toronto. */
+/** The date picker stores midnight UTC, so format in UTC, or it shows a day early in Toronto. */
 private fun formatDueDate(millis: Long): String {
     val format = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
     format.timeZone = TimeZone.getTimeZone("UTC")
