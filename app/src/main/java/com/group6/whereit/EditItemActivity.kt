@@ -42,15 +42,25 @@ class EditItemActivity : AppCompatActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     ItemCreationScreen(
                         mediaPath = loadedItem.photoPath,
-                        isVideo = false, // or loadedItem.isVideo if you have that field
+                        isVideo = loadedItem.isVideo,
                         initialDescription = loadedItem.description,
-                        initialDueDateMillis = null, // or loadedItem.dueDateMillis
+                        initialDueDateMillis = loadedItem.dueDate,
                         isEditing = true,
-                        onSave = { updatedDescription, _, _, _, _ ->
+                        // start with the item's saved location instead of the current one
+                        initialLocationName = loadedItem.locationName,
+                        initialLatitude = loadedItem.latitude,
+                        initialLongitude = loadedItem.longitude,
+                        onSave = { updatedDescription, updatedDueDate,
+                                   updatedLocationName, updatedLatitude, updatedLongitude ->
                             lifecycleScope.launch {
+                                // save every field the user can change, not just the description
                                 repository.update(
                                     loadedItem.copy(
-                                        description = updatedDescription
+                                        description = updatedDescription,
+                                        dueDate = updatedDueDate,
+                                        locationName = updatedLocationName,
+                                        latitude = updatedLatitude,
+                                        longitude = updatedLongitude
                                     )
                                 )
                                 Toast.makeText(

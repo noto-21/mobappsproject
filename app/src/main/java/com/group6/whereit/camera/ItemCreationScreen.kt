@@ -72,7 +72,11 @@ fun ItemCreationScreen(
     modifier: Modifier = Modifier,
     initialDescription: String = "",
     initialDueDateMillis: Long? = null,
-    isEditing: Boolean = false
+    isEditing: Boolean = false,
+    // saved location of the item being edited (null for a new item)
+    initialLocationName: String? = null,
+    initialLatitude: Double? = null,
+    initialLongitude: Double? = null
 ) {
     val context = LocalContext.current
 
@@ -88,24 +92,40 @@ fun ItemCreationScreen(
     var showDatePicker by remember { mutableStateOf(false) }
 
     // LOCATION: readable address shown in the text field + the coordinates behind it
-    var locationText by rememberSaveable { mutableStateOf("") }
-    var latitude by rememberSaveable { mutableStateOf<Double?>(null) }
-    var longitude by rememberSaveable { mutableStateOf<Double?>(null) }
+    // (starts with the item's saved location when editing)
+    var locationText by rememberSaveable(initialLocationName) { mutableStateOf(initialLocationName ?: "") }
+    var latitude by rememberSaveable(initialLatitude) { mutableStateOf(initialLatitude) }
+    var longitude by rememberSaveable(initialLongitude) { mutableStateOf(initialLongitude) }
     var isLocating by remember { mutableStateOf(false) }
 
+    // true once the user types their own location (or the item already has a saved one),
+    // so the automatic current-location lookup never overwrites it
+    var userEnteredLocation by rememberSaveable(initialLocationName) {
+        mutableStateOf(!initialLocationName.isNullOrBlank())
+    }
+
+    // remembers whether the lookup waiting on the permission popup came from the button
+    var pendingReplace by remember { mutableStateOf(false) }
+
     // gets the current location and puts its address in the location field
-    fun fetchCurrentLocation() {
+    // replaceTypedText = true only when the user taps "Use current location"
+    fun fetchCurrentLocation(replaceTypedText: Boolean) {
         scope.launch {
             isLocating = true
             val location = locationService.getCurrentLocation()
 
             if (location != null) {
-                latitude = location.latitude
-                longitude = location.longitude
+                // the lookup takes a few seconds; if the user started typing in the meantime,
+                // keep what they typed and don't replace it
+                if (replaceTypedText || !userEnteredLocation) {
+                    latitude = location.latitude
+                    longitude = location.longitude
 
-                // use the address if one is found, otherwise fall back to the coordinates
-                locationText = locationService.getAddress(location)
-                    ?: String.format(Locale.US, "%.5f, %.5f", location.latitude, location.longitude)
+                    // use the address if one is found, otherwise fall back to the coordinates
+                    locationText = locationService.getAddress(location)
+                        ?: String.format(Locale.US, "%.5f, %.5f", location.latitude, location.longitude)
+                    userEnteredLocation = false
+                }
             } else {
                 Toast.makeText(context, "Couldn't get your location", Toast.LENGTH_SHORT).show()
             }
@@ -119,14 +139,15 @@ fun ItemCreationScreen(
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         ) {
-            fetchCurrentLocation()
+            fetchCurrentLocation(replaceTypedText = pendingReplace)
         } else {
             Toast.makeText(context, "Location permission denied, type the location instead", Toast.LENGTH_SHORT).show()
         }
     }
 
     // checks permission first, then gets the location
-    fun requestCurrentLocation() {
+    fun requestCurrentLocation(replaceTypedText: Boolean) {
+        pendingReplace = replaceTypedText
         val hasPermission =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
                     PackageManager.PERMISSION_GRANTED ||
@@ -134,7 +155,7 @@ fun ItemCreationScreen(
                     PackageManager.PERMISSION_GRANTED
 
         if (hasPermission) {
-            fetchCurrentLocation()
+            fetchCurrentLocation(replaceTypedText)
         } else {
             locationPermissionLauncher.launch(
                 arrayOf(
@@ -145,11 +166,11 @@ fun ItemCreationScreen(
         }
     }
 
-    // fill in the current location automatically when the screen opens
-    // (skipped if we already have one, e.g. after rotating the phone)
+    // fill in the current location automatically when a NEW item's screen opens
+    // (skipped when editing, or if we already have a location, e.g. after rotating the phone)
     LaunchedEffect(Unit) {
-        if (latitude == null && locationText.isBlank()) {
-            requestCurrentLocation()
+        if (!isEditing && latitude == null && locationText.isBlank()) {
+            requestCurrentLocation(replaceTypedText = false)
         }
     }
 
@@ -242,7 +263,10 @@ fun ItemCreationScreen(
         // LOCATION: filled with the current location's address, user can edit it
         OutlinedTextField(
             value = locationText,
-            onValueChange = { locationText = it },
+            onValueChange = {
+                locationText = it
+                userEnteredLocation = true   // the user's text wins over the automatic location
+            },
             label = { Text("Location") },
             placeholder = { Text("e.g. Kitchen, top drawer") },
             supportingText = {
@@ -251,7 +275,7 @@ fun ItemCreationScreen(
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedButton(
-            onClick = { requestCurrentLocation() },
+            onClick = { requestCurrentLocation(replaceTypedText = true) },
             enabled = !isLocating
         ) {
             Text("📍 Use current location")
