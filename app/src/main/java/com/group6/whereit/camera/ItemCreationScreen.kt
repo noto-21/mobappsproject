@@ -41,6 +41,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+
+import android.view.MotionEvent
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.input.pointer.pointerInteropFilter
+
 //imports for video
 import android.net.Uri
 import android.widget.MediaController
@@ -56,9 +61,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.core.content.ContextCompat
 import com.group6.whereit.LocationService
 import kotlinx.coroutines.launch
+import android.location.Location
+import com.group6.whereit.ItemMap
 
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun ItemCreationScreen(
     mediaPath: String,
@@ -102,8 +109,12 @@ fun ItemCreationScreen(
 
     var showDatePicker by remember { mutableStateOf(false) }
 
+    var isMapTouched by remember { mutableStateOf(false) }
+
     // LOCATION: readable address shown in the text field + the coordinates behind it
-    var locationText by rememberSaveable { mutableStateOf("") }
+    var locationText by rememberSaveable(initialLocation) {
+        mutableStateOf(initialLocation ?: "")
+    }
     var isLocating by remember { mutableStateOf(false) }
 
     // true once the user types their own location (or the item already has a saved one),
@@ -210,7 +221,7 @@ fun ItemCreationScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState(), enabled = !isMapTouched)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -288,6 +299,41 @@ fun ItemCreationScreen(
         ) {
             Text("📍 Use current location")
         }
+
+        val lat = latitude
+        val lon = longitude
+        if (lat != null && lon != null) {
+            ItemMap(
+                latitude = lat,
+                longitude = lon,
+                markerTitle = locationText.ifBlank { "Item location" },
+                onLocationPicked = { newLat, newLon ->
+                    latitude = newLat
+                    longitude = newLon
+                    userEnteredLocation = true
+
+                    scope.launch {
+                        val pickedLocation = Location("").apply {
+                            latitude = newLat
+                            longitude = newLon
+                        }
+                        locationText = locationService.getAddress(pickedLocation)
+                                ?: String.format(Locale.US, "%.5f, %.5f", newLat, newLon)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .pointerInteropFilter { event ->
+                        when (event.action) {
+                            MotionEvent.ACTION_DOWN -> isMapTouched = true
+                            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> isMapTouched = false
+                        }
+                        false // don't consume the event; let the map handle it
+                    }
+            )
+        }
+
 
         Row(
             modifier = Modifier.fillMaxWidth(),

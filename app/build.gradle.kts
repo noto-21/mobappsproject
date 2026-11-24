@@ -91,6 +91,8 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.analytics)
 
+    implementation(libs.androidx.fragment.compose)
+
     // GOOGLE MAPS AND LOCATION SERVICES
     implementation(libs.play.services.location)
     implementation(libs.play.services.maps)
@@ -108,7 +110,6 @@ dependencies {
     testImplementation(libs.junit)
 
     // ANDROID UI TESTING
-    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
