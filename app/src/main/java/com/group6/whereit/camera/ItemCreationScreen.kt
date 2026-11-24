@@ -50,6 +50,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 //imports for location
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.core.content.ContextCompat
@@ -57,13 +58,14 @@ import com.group6.whereit.LocationService
 import kotlinx.coroutines.launch
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemCreationScreen(
     mediaPath: String,
     isVideo: Boolean,
     onSave: (
         description: String,
-        dueDateMillis: Long?,
+        dueDate: Long?,
         locationName: String?,
         latitude: Double?,
         longitude: Double?
@@ -71,12 +73,11 @@ fun ItemCreationScreen(
     onRetake: () -> Unit,
     modifier: Modifier = Modifier,
     initialDescription: String = "",
-    initialDueDateMillis: Long? = null,
-    isEditing: Boolean = false,
-    // saved location of the item being edited (null for a new item)
-    initialLocationName: String? = null,
+    initialDueDate: Long? = null,
+    initialLocation: String? = null,
     initialLatitude: Double? = null,
-    initialLongitude: Double? = null
+    initialLongitude: Double? = null,
+    isEditing: Boolean = false
 ) {
     val context = LocalContext.current
 
@@ -86,22 +87,29 @@ fun ItemCreationScreen(
     var description by rememberSaveable(
         initialDescription
     ) { mutableStateOf(initialDescription) }
-    var dueDateMillis by rememberSaveable(
-        initialDueDateMillis
-    ) { mutableStateOf(initialDueDateMillis) }
+    var dueDate by rememberSaveable(
+        initialDueDate
+    ) { mutableStateOf(initialDueDate) }
+    var locationName by rememberSaveable(initialLocation) {
+        mutableStateOf(initialLocation ?: "")
+    }
+    var latitude by rememberSaveable(initialLatitude) {
+        mutableStateOf(initialLatitude)
+    }
+    var longitude by rememberSaveable(initialLongitude) {
+        mutableStateOf(initialLongitude)
+    }
+
     var showDatePicker by remember { mutableStateOf(false) }
 
     // LOCATION: readable address shown in the text field + the coordinates behind it
-    // (starts with the item's saved location when editing)
-    var locationText by rememberSaveable(initialLocationName) { mutableStateOf(initialLocationName ?: "") }
-    var latitude by rememberSaveable(initialLatitude) { mutableStateOf(initialLatitude) }
-    var longitude by rememberSaveable(initialLongitude) { mutableStateOf(initialLongitude) }
+    var locationText by rememberSaveable { mutableStateOf("") }
     var isLocating by remember { mutableStateOf(false) }
 
     // true once the user types their own location (or the item already has a saved one),
     // so the automatic current-location lookup never overwrites it
-    var userEnteredLocation by rememberSaveable(initialLocationName) {
-        mutableStateOf(!initialLocationName.isNullOrBlank())
+    var userEnteredLocation by rememberSaveable(initialLocation) {
+        mutableStateOf(!initialLocation.isNullOrBlank())
     }
 
     // remembers whether the lookup waiting on the permission popup came from the button
@@ -253,11 +261,11 @@ fun ItemCreationScreen(
 
         OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
             Text(
-                dueDateMillis?.let { "Due: ${formatDate(it)}" } ?: "Set due date (optional)"
+                dueDate?.let { "Due: ${formatDate(it)}" } ?: "Set due date (optional)"
             )
         }
-        if (dueDateMillis != null) {
-            TextButton(onClick = { dueDateMillis = null }) { Text("Clear due date") }
+        if (dueDate != null) {
+            TextButton(onClick = { dueDate = null }) { Text("Clear due date") }
         }
 
         // LOCATION: filled with the current location's address, user can edit it
@@ -292,7 +300,7 @@ fun ItemCreationScreen(
                 onClick = {
                     onSave(
                         description.trim(),
-                        dueDateMillis,
+                        dueDate,
                         locationText.trim().ifBlank { null },
                         latitude,
                         longitude
@@ -306,13 +314,15 @@ fun ItemCreationScreen(
         }
     }
 
-    if (showDatePicker) {
-        val dateState = rememberDatePickerState(initialSelectedDateMillis = dueDateMillis)
+    if (showDatePicker)
+    {
+        val dateState = rememberDatePickerState(initialSelectedDateMillis = dueDate)
+
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    dueDateMillis = dateState.selectedDateMillis
+                    dueDate = dateState.selectedDateMillis
                     showDatePicker = false
                 }) { Text("OK") }
             },

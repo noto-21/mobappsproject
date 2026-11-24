@@ -28,7 +28,7 @@ import com.group6.whereit.EditItemActivity
 fun ItemsListScreen(
     repository: SpotRepository,
     userId: String,
-    onAddItem: () -> Unit,              // called by the + button, MainActivity switches to the camera
+    onAddItem: () -> Unit,  // called by the + button, MainActivity switches to the camera
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -46,12 +46,16 @@ fun ItemsListScreen(
         }
     ) { padding ->
         if (items.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding)) {
+            Box(Modifier
+                .fillMaxSize()
+                .padding(padding)) {
                 Text("No items yet. Tap + to add one.", Modifier.padding(16.dp))
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {

@@ -44,23 +44,24 @@ class EditItemActivity : AppCompatActivity() {
                         mediaPath = loadedItem.photoPath,
                         isVideo = loadedItem.isVideo,
                         initialDescription = loadedItem.description,
-                        initialDueDateMillis = loadedItem.dueDate,
-                        isEditing = true,
-                        // start with the item's saved location instead of the current one
-                        initialLocationName = loadedItem.locationName,
+                        initialDueDate = loadedItem.dueDate, // or loadedItem.dueDateMillis
+                        initialLocation = loadedItem.locationName,
                         initialLatitude = loadedItem.latitude,
                         initialLongitude = loadedItem.longitude,
-                        onSave = { updatedDescription, updatedDueDate,
-                                   updatedLocationName, updatedLatitude, updatedLongitude ->
-                            lifecycleScope.launch {
-                                // save every field the user can change, not just the description
+                        isEditing = true,
+                        onSave = {
+                            updatedDescription,
+                            updatedDueDate,
+                            updatedLocation,
+                            updatedLat,
+                            updatedLon -> lifecycleScope.launch {
                                 repository.update(
                                     loadedItem.copy(
                                         description = updatedDescription,
                                         dueDate = updatedDueDate,
-                                        locationName = updatedLocationName,
-                                        latitude = updatedLatitude,
-                                        longitude = updatedLongitude
+                                        locationName = updatedLocation,
+                                        latitude = updatedLat,
+                                        longitude = updatedLon
                                     )
                                 )
                                 Toast.makeText(

@@ -20,7 +20,7 @@ fun CameraFlow(
         mediaPath: String,
         isVideo: Boolean,
         description: String,
-        dueDateMillis: Long?,
+        dueDate: Long?,
         locationName: String?,
         latitude: Double?,
         longitude: Double?
