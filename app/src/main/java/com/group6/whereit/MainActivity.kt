@@ -3,11 +3,13 @@ package com.group6.whereit
 // ANDROID ACTIVITY AND NAVIGATION
 import android.Manifest // access Android permissions
 import android.content.Intent // opens another Activity
+import android.content.res.Configuration
 import android.os.Bundle // stores saved Activity state
 import android.widget.Toast // displays temporary messages
 import androidx.appcompat.app.AppCompatActivity // base class for MainActivity
 import androidx.activity.compose.setContent // displays Compose UI
 import androidx.activity.result.contract.ActivityResultContracts // handles permission results
+import androidx.appcompat.app.AppCompatDelegate
 
 // JETPACK COMPOSE - UI COMPONENTS
 import androidx.compose.material3.Text // displays text
@@ -17,6 +19,7 @@ import androidx.compose.material3.Button // creates clickable buttons
 import androidx.compose.foundation.layout.Column // arranges elements vertically
 import androidx.compose.foundation.layout.Row // arranges elements horizontally
 import androidx.compose.foundation.layout.Arrangement // controls positioning
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth // fills available width
 import androidx.compose.ui.Modifier // changes layout properties
 import androidx.compose.foundation.layout.fillMaxSize // fills available screen space
@@ -45,6 +48,12 @@ import com.group6.whereit.camera.CameraFlow
 import androidx.compose.runtime.LaunchedEffect // runs asynchronous code inside Compose
 
 import androidx.compose.foundation.layout.PaddingValues // controls spacing inside buttons
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp // measures spacing in density-independent pixels
 import androidx.compose.ui.unit.sp // measures text size
 
@@ -81,8 +90,28 @@ class MainActivity : AppCompatActivity() {
         val db = WhereItDatabase.getInstance(this)
         val repository = SpotRepository(db.spotItemDao())
 
+        // load saved dark mode preference (defaults to device system setting)
+        val prefs = getSharedPreferences("whereit_prefs", MODE_PRIVATE)
+        val systemDark = (resources.configuration.uiMode and
+                Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val initialDarkMode = prefs.getBoolean("dark_mode", systemDark)
+
+        AppCompatDelegate.setDefaultNightMode(
+            if (initialDarkMode) AppCompatDelegate.MODE_NIGHT_YES
+            else AppCompatDelegate.MODE_NIGHT_NO
+        )
+
         // display the Jetpack Compose interface
         setContent {
+            val isDarkMode = remember { mutableStateOf(initialDarkMode) }
+
+            WhereItTheme(darkTheme = isDarkMode.value) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    // Root Box allows floating the Dark Mode toggle in the top-right corner
+                    Box(modifier = Modifier.fillMaxSize()) {
 
                 // check whether Firebase already has a signed-in user
                 val isLoggedIn = remember {
@@ -127,25 +156,10 @@ class MainActivity : AppCompatActivity() {
                         Column(modifier = Modifier.fillMaxSize()) {
 
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                //edited to leave room for dark mode toggle button
+                                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(end = 96.dp),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
-
-                                // button to request location and test retrieval
-                                Button(
-                                    onClick = {
-                                        requestPermissionLauncher.launch(
-                                            arrayOf(
-                                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                                Manifest.permission.ACCESS_COARSE_LOCATION
-                                            )
-                                        )
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp)
-
-                                ) {
-                                    Text("Test Location")
-                                }
 
                                 // button to open the map
                                 Button(
@@ -252,9 +266,32 @@ class MainActivity : AppCompatActivity() {
                         }
                     )
                 }
-            }
 
+                        // Dark Mode toggle pinned to the top-right corner of the screen
+                        FilledTonalButton(
+                            onClick = {
+                                val nextMode = !isDarkMode.value
+                                isDarkMode.value = nextMode
+                                prefs.edit().putBoolean("dark_mode", nextMode).apply()
+                                AppCompatDelegate.setDefaultNightMode(
+                                    if (nextMode) AppCompatDelegate.MODE_NIGHT_YES
+                                    else AppCompatDelegate.MODE_NIGHT_NO
+                                )
+                            },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .statusBarsPadding()
+                                .padding(top = 4.dp, end = 8.dp)
+                        ) {
+                            Text(if (isDarkMode.value) "☀️ Light" else "🌙 Dark")
+                        }
+                    }
+                }
+            }
+        }
     }
+
 
 
     // retrieve the device's current location and display its coordinates
