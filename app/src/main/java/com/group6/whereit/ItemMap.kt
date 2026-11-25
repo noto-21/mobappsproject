@@ -18,7 +18,7 @@ fun ItemMap(
     latitude: Double,
     longitude: Double,
     markerTitle: String,
-    onLocationPicked: (lat: Double, lon: Double) -> Unit,
+    onLocationPicked: (lat: Double, lon: Double, placeName: String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     AndroidFragment<SupportMapFragment>(
@@ -54,9 +54,15 @@ fun ItemMap(
                     CameraUpdateFactory.newLatLngZoom(position, 15f)
                 )
 
-                // Let the user tap the map to move the pin
+                // Tapping a named Google Maps place/building gives its exact POI name
+                googleMap.setOnPoiClickListener { poi ->
+                    val cleanName = poi.name.replace("\n", ", ").trim()
+                    onLocationPicked(poi.latLng.latitude, poi.latLng.longitude, cleanName)
+                }
+
+                // Tapping anywhere else on the map resolves via geocoding
                 googleMap.setOnMapClickListener { clickedLatLng ->
-                    onLocationPicked(clickedLatLng.latitude, clickedLatLng.longitude)
+                    onLocationPicked(clickedLatLng.latitude, clickedLatLng.longitude, null)
                 }
             }
         }

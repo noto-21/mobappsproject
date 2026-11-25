@@ -55,6 +55,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp // measures spacing in density-independent pixels
+import androidx.core.content.edit
 
 class MainActivity : AppCompatActivity() {
 
@@ -252,7 +253,7 @@ class MainActivity : AppCompatActivity() {
                             onClick = {
                                 val nextMode = !isDarkMode.value
                                 isDarkMode.value = nextMode
-                                prefs.edit().putBoolean("dark_mode", nextMode).apply()
+                                prefs.edit { putBoolean("dark_mode", nextMode) }
                                 AppCompatDelegate.setDefaultNightMode(
                                     if (nextMode) AppCompatDelegate.MODE_NIGHT_YES
                                     else AppCompatDelegate.MODE_NIGHT_NO

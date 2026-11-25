@@ -1,17 +1,37 @@
 package com.group6.whereit
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import android.content.Intent
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.group6.whereit.data.DueDate
@@ -20,9 +40,8 @@ import com.group6.whereit.data.SpotRepository
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
-import android.content.Intent
-import androidx.compose.ui.platform.LocalContext
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,9 +66,11 @@ fun ItemsListScreen(
         }
     ) { padding ->
         if (items.isEmpty()) {
-            Box(Modifier
-                .fillMaxSize()
-                .padding(padding)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
                 Text("No items yet. Tap + to add one.", Modifier.padding(16.dp))
             }
         } else {
@@ -86,82 +107,69 @@ private fun SpotItemCard(
 ) {
     val date = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(item.timestamp))
 
+    val displayLocation = item.locationName?.takeIf { it.isNotBlank() }
+            ?: if (item.latitude != null && item.longitude != null) {
+                String.format(Locale.US, "%.4f, %.4f", item.latitude, item.longitude)
+            } else {
+                null
+            }
+
     Card(
         onClick = onClick,
-        Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(Modifier.padding(16.dp)) {
-            // thumbnail: the photo, or a placeholder for videos / items without a photo
-            if (item.photoPath.isNotBlank() && !item.isVideo) {
-                AsyncImage(
-                    model = File(item.photoPath),
-                    contentDescription = "Photo of ${item.description}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(if (item.isVideo) "🎥" else "📦", style = MaterialTheme.typography.headlineSmall)
+        Column(Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (item.photoPath.isNotBlank()) {
+                    AsyncImage(
+                        model = File(item.photoPath),
+                        contentDescription = "Photo of ${item.description}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    )
+                    Spacer(Modifier.width(12.dp))
+                }
+
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = (if (item.isPinned) "📌 " else "") + item.description,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "Saved: $date",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    if (item.dueDate != null) {
+                        Text(
+                            text = "⏰ Due: ${DueDate.format(item.dueDate)}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    if (displayLocation != null) {
+                        Text(
+                            text = "📍 $displayLocation",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
 
-            Spacer(Modifier.width(12.dp))
-
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = (if (item.isPinned) "📌 " else "") + item.description,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(date, style = MaterialTheme.typography.bodySmall)
-
-                // show the readable location if there is one, otherwise the coordinates
-                if (!item.locationName.isNullOrBlank()) {
-                    Text("📍 ${item.locationName}", style = MaterialTheme.typography.bodySmall)
-                } else if (item.latitude != null && item.longitude != null) {
-                    Text(
-                        "📍 %.4f, %.4f".format(item.latitude, item.longitude),
-                        style = MaterialTheme.typography.bodySmall
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onTogglePin) {
+                    Text(if (item.isPinned) "Unpin" else "Pin")
                 }
-
-                // due date, if one was picked
-                item.dueDate?.let {
-                    Text("⏰ Due ${DueDate.format(it)}", style = MaterialTheme.typography.bodySmall)
-                }
-
-                // compact actions: plain clickable labels instead of TextButtons,
-                // which reserve a 48dp touch target and add lots of padding
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End)
-                ) {
-                    CardAction(if (item.isPinned) "Unpin" else "Pin", onTogglePin)
-                    CardAction("Delete", onDelete)
+                TextButton(onClick = onDelete) {
+                    Text("Delete")
                 }
             }
         }
     }
-}
-
-@Composable
-private fun CardAction(label: String, onClick: () -> Unit) {
-    Text(
-        text = label,
-        color = MaterialTheme.colorScheme.primary,
-        style = MaterialTheme.typography.labelLarge,
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    )
 }

@@ -49,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 
 @Composable
@@ -142,7 +143,7 @@ fun CameraScreen(
         if (activeRecording != null) {
             recordingSeconds = 0
             while (true) {
-                delay(1000L)
+                delay(1000L.milliseconds)
                 recordingSeconds++
             }
         } else {

@@ -1,9 +1,15 @@
 package com.group6.whereit
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.speech.RecognizerIntent
+import android.text.format.DateFormat
+import android.widget.MediaController
 import android.widget.Toast
+import android.widget.VideoView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -11,23 +17,30 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,35 +48,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import java.io.File
-import java.util.Locale
-
-import androidx.compose.ui.ExperimentalComposeUiApi
-
-//imports for video
-import android.net.Uri
-import android.widget.MediaController
-import android.widget.VideoView
-import androidx.compose.foundation.layout.height
 import androidx.compose.ui.viewinterop.AndroidView
-//imports for location
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.launch
-import android.location.Location
+import coil3.compose.AsyncImage
 import com.group6.whereit.data.DueDate
-import android.text.format.DateFormat
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberTimePickerState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemCreationScreen(
     mediaPath: String,
@@ -89,14 +83,11 @@ fun ItemCreationScreen(
     val scope = rememberCoroutineScope()
     val locationService = remember { LocationService(context) }
 
-    var description by rememberSaveable(
-        initialDescription
-    ) { mutableStateOf(initialDescription) }
-    var dueDate by rememberSaveable(
-        initialDueDate
-    ) { mutableStateOf(initialDueDate) }
-    var locationName by rememberSaveable(initialLocation) {
-        mutableStateOf(initialLocation ?: "")
+    var description by rememberSaveable(initialDescription) {
+        mutableStateOf(initialDescription)
+    }
+    var dueDate by rememberSaveable(initialDueDate) {
+        mutableStateOf(initialDueDate)
     }
     var latitude by rememberSaveable(initialLatitude) {
         mutableStateOf(initialLatitude)
@@ -109,7 +100,7 @@ fun ItemCreationScreen(
     // date chosen in the date picker, waiting for the optional time step
     var pendingDate by remember { mutableStateOf<Long?>(null) }
 
-    // LOCATION: readable address shown in the text field + the coordinates behind it
+    // LOCATION: readable address/place name shown in the text field + the coordinates behind it
     var locationText by rememberSaveable(initialLocation) {
         mutableStateOf(initialLocation ?: "")
     }
@@ -124,7 +115,25 @@ fun ItemCreationScreen(
     // remembers whether the lookup waiting on the permission popup came from the button
     var pendingReplace by remember { mutableStateOf(false) }
 
-    // gets the current location and puts its address in the location field
+    // true only when the user manually types in the location field
+    var shouldGeocodeText by remember { mutableStateOf(false) }
+
+    LaunchedEffect(locationText, shouldGeocodeText) {
+        if (!shouldGeocodeText) return@LaunchedEffect
+
+        val query = locationText.trim()
+        if (query.isBlank()) return@LaunchedEffect
+
+        delay(800L.milliseconds) // debounce so we don't query on every keystroke
+        val coords = locationService.getCoordinates(query)
+        if (coords != null) {
+            latitude = coords.first
+            longitude = coords.second
+        }
+        shouldGeocodeText = false
+    }
+
+    // gets the current location and resolves it to the nearest named place/address
     // replaceTypedText = true only when the user taps "Use current location"
     fun fetchCurrentLocation(replaceTypedText: Boolean) {
         scope.launch {
@@ -137,10 +146,11 @@ fun ItemCreationScreen(
                 if (replaceTypedText || !userEnteredLocation) {
                     latitude = location.latitude
                     longitude = location.longitude
-
-                    // use the address if one is found, otherwise fall back to the coordinates
-                    locationText = locationService.getAddress(location)
-                        ?: String.format(Locale.US, "%.5f, %.5f", location.latitude, location.longitude)
+                    shouldGeocodeText = false
+                    locationText = locationService.resolveLocationName(
+                        location.latitude,
+                        location.longitude
+                    )
                     userEnteredLocation = false
                 }
             } else {
@@ -158,7 +168,11 @@ fun ItemCreationScreen(
         ) {
             fetchCurrentLocation(replaceTypedText = pendingReplace)
         } else {
-            Toast.makeText(context, "Location permission denied, type the location instead", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                "Location permission denied, type the location instead",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -166,10 +180,10 @@ fun ItemCreationScreen(
     fun requestCurrentLocation(replaceTypedText: Boolean) {
         pendingReplace = replaceTypedText
         val hasPermission =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-                    PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-                    PackageManager.PERMISSION_GRANTED
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                        PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                        PackageManager.PERMISSION_GRANTED
 
         if (hasPermission) {
             fetchCurrentLocation(replaceTypedText)
@@ -183,11 +197,15 @@ fun ItemCreationScreen(
         }
     }
 
-    // fill in the current location automatically when a NEW item's screen opens
-    // (skipped when editing, or if we already have a location, e.g. after rotating the phone)
+    // On new items, automatically fetch the current location.
+    // On edited items that have saved coordinates but no saved location name, resolve the name.
     LaunchedEffect(Unit) {
         if (!isEditing && latitude == null && locationText.isBlank()) {
             requestCurrentLocation(replaceTypedText = false)
+        } else if (isEditing && locationText.isBlank() && latitude != null && longitude != null) {
+            isLocating = true
+            locationText = locationService.resolveLocationName(latitude!!, longitude!!)
+            isLocating = false
         }
     }
 
@@ -205,13 +223,20 @@ fun ItemCreationScreen(
 
     fun startSpeech() {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
             putExtra(RecognizerIntent.EXTRA_PROMPT, "Describe the item")
         }
         try {
             speechLauncher.launch(intent)
         } catch (e: ActivityNotFoundException) {
-            Toast.makeText(context, "Speech input isn't available on this device", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                "Speech input isn't available on this device",
+                Toast.LENGTH_SHORT
+            ).show()
             print(e)
         }
     }
@@ -228,8 +253,8 @@ fun ItemCreationScreen(
             style = MaterialTheme.typography.headlineSmall
         )
 
-        if (mediaPath.isNotBlank())
-            if (isVideo)
+        if (mediaPath.isNotBlank()) {
+            if (isVideo) {
                 AndroidView(
                     factory = { ctx ->
                         VideoView(ctx).apply {
@@ -247,7 +272,7 @@ fun ItemCreationScreen(
                         .fillMaxWidth()
                         .height(220.dp)
                 )
-            else
+            } else {
                 AsyncImage(
                     model = File(mediaPath),
                     contentDescription = "Photo of the item",
@@ -256,6 +281,8 @@ fun ItemCreationScreen(
                         .size(140.dp)
                         .align(Alignment.CenterHorizontally)
                 )
+            }
+        }
 
         OutlinedTextField(
             value = description,
@@ -277,17 +304,18 @@ fun ItemCreationScreen(
             TextButton(onClick = { dueDate = null }) { Text("Clear due date") }
         }
 
-        // LOCATION: filled with the current location's address, user can edit it
+        // LOCATION: filled with the nearest place/address, user can edit or tap map
         OutlinedTextField(
             value = locationText,
             onValueChange = {
                 locationText = it
                 userEnteredLocation = true   // the user's text wins over the automatic location
+                shouldGeocodeText = true
             },
             label = { Text("Location") },
             placeholder = { Text("e.g. Kitchen, top drawer") },
             supportingText = {
-                if (isLocating) Text("Getting current location...")
+                if (isLocating) Text("Resolving location...")
             },
             modifier = Modifier.fillMaxWidth()
         )
@@ -305,18 +333,20 @@ fun ItemCreationScreen(
                 latitude = lat,
                 longitude = lon,
                 markerTitle = locationText.ifBlank { "Item location" },
-                onLocationPicked = { newLat, newLon ->
+                onLocationPicked = { newLat, newLon, poiName ->
                     latitude = newLat
                     longitude = newLon
                     userEnteredLocation = true
+                    shouldGeocodeText = false
 
-                    scope.launch {
-                        val pickedLocation = Location("").apply {
-                            latitude = newLat
-                            longitude = newLon
+                    if (!poiName.isNullOrBlank()) {
+                        locationText = poiName
+                    } else {
+                        scope.launch {
+                            isLocating = true
+                            locationText = locationService.resolveLocationName(newLat, newLon)
+                            isLocating = false
                         }
-                        locationText = locationService.getAddress(pickedLocation)
-                                ?: String.format(Locale.US, "%.5f, %.5f", newLat, newLon)
                     }
                 },
                 modifier = Modifier
@@ -324,7 +354,6 @@ fun ItemCreationScreen(
                     .height(220.dp)
             )
         }
-
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -351,8 +380,7 @@ fun ItemCreationScreen(
         }
     }
 
-    if (showDatePicker)
-    {
+    if (showDatePicker) {
         val dateState = rememberDatePickerState(
             initialSelectedDateMillis = dueDate?.let { DueDate.pickerDate(it) }
         )
