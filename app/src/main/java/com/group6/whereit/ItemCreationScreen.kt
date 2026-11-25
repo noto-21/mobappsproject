@@ -1,4 +1,4 @@
-package com.group6.whereit.camera
+package com.group6.whereit
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -37,14 +37,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
 
-import android.view.MotionEvent
 import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.input.pointer.pointerInteropFilter
 
 //imports for video
 import android.net.Uri
@@ -59,10 +54,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.core.content.ContextCompat
-import com.group6.whereit.LocationService
 import kotlinx.coroutines.launch
 import android.location.Location
-import com.group6.whereit.ItemMap
 import com.group6.whereit.data.DueDate
 import android.text.format.DateFormat
 import androidx.compose.material3.AlertDialog
@@ -115,8 +108,6 @@ fun ItemCreationScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     // date chosen in the date picker, waiting for the optional time step
     var pendingDate by remember { mutableStateOf<Long?>(null) }
-
-    var isMapTouched by remember { mutableStateOf(false) }
 
     // LOCATION: readable address shown in the text field + the coordinates behind it
     var locationText by rememberSaveable(initialLocation) {
@@ -228,7 +219,7 @@ fun ItemCreationScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState(), enabled = !isMapTouched)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -331,13 +322,6 @@ fun ItemCreationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(220.dp)
-                    .pointerInteropFilter { event ->
-                        when (event.action) {
-                            MotionEvent.ACTION_DOWN -> isMapTouched = true
-                            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> isMapTouched = false
-                        }
-                        false // don't consume the event; let the map handle it
-                    }
             )
         }
 

@@ -1,4 +1,4 @@
-package com.group6.whereit.ui.items
+package com.group6.whereit
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,7 +23,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
-import com.group6.whereit.EditItemActivity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
