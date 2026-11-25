@@ -8,6 +8,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.group6.whereit.ItemCreationScreen
 import java.io.File
 
 /**
@@ -47,7 +48,15 @@ fun CameraFlow(
             isVideo = isVideo,
             onSave = { description, dueDate, locationName, latitude, longitude ->
                 // MainActivity saves the item to the database and switches to the item library
-                onItemSaved(currentPath, isVideo, description, dueDate, locationName, latitude, longitude)
+                onItemSaved(
+                    currentPath,
+                    isVideo,
+                    description,
+                    dueDate,
+                    locationName,
+                    latitude,
+                    longitude
+                )
                 Toast.makeText(context, "Item saved", Toast.LENGTH_SHORT).show()
                 mediaPath = null            // reset so the camera starts fresh next time
                 isVideo = false

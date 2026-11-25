@@ -2,7 +2,6 @@ package com.group6.whereit
 
 // ANDROID ACTIVITY AND NAVIGATION
 import android.Manifest // access Android permissions
-import android.content.Intent // opens another Activity
 import android.content.res.Configuration
 import android.os.Bundle // stores saved Activity state
 import android.widget.Toast // displays temporary messages
@@ -37,8 +36,7 @@ import com.google.firebase.auth.FirebaseAuth // manages Firebase user sessions
 import com.group6.whereit.data.SpotItem // one saved item (database row)
 import com.group6.whereit.data.SpotRepository // provides access to stored items
 import com.group6.whereit.data.WhereItDatabase // local Room database
-import com.group6.whereit.ui.items.ItemsListScreen // displays the item library
-import com.group6.whereit.ui.theme.WhereItTheme // app's Compose theme
+import com.group6.whereit.ui.WhereItTheme // app's Compose theme
 
 // LOCATION AND COROUTINES
 import androidx.lifecycle.lifecycleScope // launches lifecycle-aware coroutines
@@ -57,7 +55,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp // measures spacing in density-independent pixels
-import androidx.compose.ui.unit.sp // measures text size
 
 class MainActivity : AppCompatActivity() {
 

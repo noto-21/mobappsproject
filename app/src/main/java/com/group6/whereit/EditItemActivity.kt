@@ -10,11 +10,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import com.group6.whereit.camera.ItemCreationScreen
 import com.group6.whereit.data.SpotItem
 import com.group6.whereit.data.SpotRepository
 import com.group6.whereit.data.WhereItDatabase
-import com.group6.whereit.ui.theme.WhereItTheme
+import com.group6.whereit.ui.WhereItTheme
 import android.content.res.Configuration
 import kotlinx.coroutines.launch
 
