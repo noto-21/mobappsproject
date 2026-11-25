@@ -26,6 +26,12 @@ import androidx.compose.foundation.layout.width // sets element width
 import androidx.compose.foundation.layout.padding // adds spacing around elements
 import androidx.compose.ui.unit.dp // unit for layout dimensions and spacing
 import androidx.compose.ui.unit.sp // unit for font sizes
+import androidx.compose.foundation.Image // displays an image
+import androidx.compose.foundation.layout.size // sets element width and height together
+import androidx.compose.ui.res.painterResource // loads an image from res/drawable
+import com.group6.whereit.R // gives access to app resources like the logo
+import androidx.compose.foundation.shape.RoundedCornerShape // rounded corner shape
+import androidx.compose.ui.draw.clip // clips an element to a shape
 
 // TEXT STYLING AND KEYBOARD INPUT
 import androidx.compose.ui.text.font.FontWeight // controls text boldness
@@ -75,6 +81,18 @@ fun AuthScreen(onAuthSuccess: () -> Unit){
 
     ) { // column contents start under here
 
+
+        // app logo above the title
+        Image(
+            painter = painterResource(id = R.drawable.whereit_logo),
+            contentDescription = "WhereIt? logo",
+            modifier = Modifier
+                .size(120.dp)
+                .clip(RoundedCornerShape(28.dp)) // rounded like an app icon
+        )
+
+        // space between the logo and the title
+        Spacer(modifier = Modifier.height(12.dp))
 
         Text(
             text = "WhereIt?",

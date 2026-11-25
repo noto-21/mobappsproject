@@ -14,6 +14,8 @@ import com.group6.whereit.camera.ItemCreationScreen
 import com.group6.whereit.data.SpotItem
 import com.group6.whereit.data.SpotRepository
 import com.group6.whereit.data.WhereItDatabase
+import com.group6.whereit.ui.theme.WhereItTheme
+import android.content.res.Configuration
 import kotlinx.coroutines.launch
 
 class EditItemActivity : AppCompatActivity() {
@@ -27,6 +29,12 @@ class EditItemActivity : AppCompatActivity() {
         // Same pattern as lab2: read the ID from the Intent
         val itemId = intent.getLongExtra("item_id", -1L)
 
+        // Use the same dark/light choice as the main screen's toggle
+        val prefs = getSharedPreferences("whereit_prefs", MODE_PRIVATE)
+        val systemDark = (resources.configuration.uiMode and
+                Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val darkMode = prefs.getBoolean("dark_mode", systemDark)
+
         setContent {
             var item by remember { mutableStateOf<SpotItem?>(null) }
 
@@ -38,7 +46,7 @@ class EditItemActivity : AppCompatActivity() {
             }
 
             val loadedItem = item
-            if (loadedItem != null) {
+            if (loadedItem != null) WhereItTheme(darkTheme = darkMode) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     ItemCreationScreen(
                         mediaPath = loadedItem.photoPath,

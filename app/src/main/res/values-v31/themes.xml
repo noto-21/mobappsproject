@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Android 12+ launch (splash) screen. Same theme as values/themes.xml plus splash settings.
+         background_off_white is light blue-lavender in light mode and charcoal in dark mode
+         (values-night/colors.xml), so the splash follows the phone's light/dark setting. -->
+    <style name="Theme.WhereIt" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/periwinkle_secondary</item>
+        <item name="android:windowSplashScreenBackground">@color/background_off_white</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/background_off_white</item>
+    </style>
+
+</resources>

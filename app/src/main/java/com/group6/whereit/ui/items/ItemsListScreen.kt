@@ -1,6 +1,7 @@
 package com.group6.whereit.ui.items
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.group6.whereit.data.DueDate
 import com.group6.whereit.data.SpotItem
 import com.group6.whereit.data.SpotRepository
 import kotlinx.coroutines.launch
@@ -133,21 +135,34 @@ private fun SpotItemCard(
 
                 // due date, if one was picked
                 item.dueDate?.let {
-                    Text("⏰ Due ${formatDueDate(it)}", style = MaterialTheme.typography.bodySmall)
+                    Text("⏰ Due ${DueDate.format(it)}", style = MaterialTheme.typography.bodySmall)
                 }
 
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onTogglePin) { Text(if (item.isPinned) "Unpin" else "Pin") }
-                    TextButton(onClick = onDelete) { Text("Delete") }
+                // compact actions: plain clickable labels instead of TextButtons,
+                // which reserve a 48dp touch target and add lots of padding
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End)
+                ) {
+                    CardAction(if (item.isPinned) "Unpin" else "Pin", onTogglePin)
+                    CardAction("Delete", onDelete)
                 }
             }
         }
     }
 }
 
-/** The date picker stores midnight UTC, so format in UTC, or it shows a day early in Toronto. */
-private fun formatDueDate(millis: Long): String {
-    val format = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-    format.timeZone = TimeZone.getTimeZone("UTC")
-    return format.format(Date(millis))
+@Composable
+private fun CardAction(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    )
 }

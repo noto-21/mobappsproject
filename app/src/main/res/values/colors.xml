@@ -18,7 +18,7 @@
     <color name="periwinkle_container">#E8EAF6</color>
 
     <!-- Backgrounds & Surfaces -->
-    <color name="background_off_white">#F8F9FA</color>
+    <color name="background_off_white">#F4F1FC</color> <!-- light lavender -->
     <color name="surface_white">#FFFFFF</color>
 
     <!-- Text & Borders -->

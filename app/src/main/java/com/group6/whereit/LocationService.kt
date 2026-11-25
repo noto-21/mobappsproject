@@ -16,6 +16,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.coroutines.resume
+import android.util.Log
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * A service class responsible for fetching the device's current geographical location
@@ -66,9 +70,56 @@ class LocationService(private val context: Context)
      * Turns a location's coordinates into a readable address (reverse geocoding),
      * e.g. "2000 Simcoe St N, Oshawa, ON L1G 0C5, Canada".
      *
-     * @return The address, or null if the device has no geocoder or no address was found.
+     * Tries Android's built-in Geocoder first. Emulators often can't use it, so if it gives
+     * nothing back, asks OpenStreetMap (Nominatim) for the address over the internet instead.
+     *
+     * @return The address, or null if neither lookup found one (no internet, etc.).
      */
-    suspend fun getAddress(location: Location): String? = withContext(Dispatchers.IO)
+    suspend fun getAddress(location: Location): String?
+    {
+        val address = getAddressFromGeocoder(location) ?: getAddressFromOpenStreetMap(location)
+        Log.d("WhereIt", "Address for ${location.latitude}, ${location.longitude}: $address")
+        return address
+    }
+
+    /**
+     * Backup address lookup using OpenStreetMap's free Nominatim service.
+     * (Their rules: send a User-Agent naming the app, and at most 1 request per second.)
+     */
+    private suspend fun getAddressFromOpenStreetMap(location: Location): String? = withContext(Dispatchers.IO)
+    {
+        try
+        {
+            val url = URL(
+                "https://nominatim.openstreetmap.org/reverse?format=jsonv2" +
+                        "&lat=${location.latitude}&lon=${location.longitude}"
+            )
+            val connection = url.openConnection() as HttpURLConnection
+            connection.setRequestProperty("User-Agent", "WhereIt-StudentApp/1.0 (Ontario Tech SOFE 4640)")
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+
+            try
+            {
+                if (connection.responseCode != HttpURLConnection.HTTP_OK) return@withContext null
+
+                val body = connection.inputStream.bufferedReader().use { it.readText() }
+                JSONObject(body).optString("display_name").ifBlank { null }
+            }
+            finally
+            {
+                connection.disconnect()
+            }
+        }
+        catch (e: Exception)
+        {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /** Address lookup using Android's built-in Geocoder. */
+    private suspend fun getAddressFromGeocoder(location: Location): String? = withContext(Dispatchers.IO)
     {
         if (!Geocoder.isPresent()) return@withContext null
 

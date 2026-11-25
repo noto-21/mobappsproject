@@ -63,6 +63,11 @@ import com.group6.whereit.LocationService
 import kotlinx.coroutines.launch
 import android.location.Location
 import com.group6.whereit.ItemMap
+import com.group6.whereit.data.DueDate
+import android.text.format.DateFormat
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -108,6 +113,8 @@ fun ItemCreationScreen(
     }
 
     var showDatePicker by remember { mutableStateOf(false) }
+    // date chosen in the date picker, waiting for the optional time step
+    var pendingDate by remember { mutableStateOf<Long?>(null) }
 
     var isMapTouched by remember { mutableStateOf(false) }
 
@@ -272,7 +279,7 @@ fun ItemCreationScreen(
 
         OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
             Text(
-                dueDate?.let { "Due: ${formatDate(it)}" } ?: "Set due date (optional)"
+                dueDate?.let { "Due: ${DueDate.format(it)}" } ?: "Set due date & time (optional)"
             )
         }
         if (dueDate != null) {
@@ -362,15 +369,19 @@ fun ItemCreationScreen(
 
     if (showDatePicker)
     {
-        val dateState = rememberDatePickerState(initialSelectedDateMillis = dueDate)
+        val dateState = rememberDatePickerState(
+            initialSelectedDateMillis = dueDate?.let { DueDate.pickerDate(it) }
+        )
 
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    dueDate = dateState.selectedDateMillis
+                    // go on to the optional time step (or clear if no date was picked)
+                    val picked = dateState.selectedDateMillis
+                    if (picked == null) dueDate = null else pendingDate = picked
                     showDatePicker = false
-                }) { Text("OK") }
+                }) { Text("Next") }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
@@ -379,11 +390,33 @@ fun ItemCreationScreen(
             DatePicker(state = dateState)
         }
     }
-}
 
-/** DatePicker gives midnight UTC, so format in UTC or the date shows up a day early in Toronto. */
-private fun formatDate(millis: Long): String {
-    val format = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-    format.timeZone = TimeZone.getTimeZone("UTC")
-    return format.format(Date(millis))
+    // Step 2: optional time for the chosen date
+    val dateForTime = pendingDate
+    if (dateForTime != null) {
+        val (startHour, startMinute) = dueDate?.let { DueDate.timeOf(it) } ?: (9 to 0)
+        val timeState = rememberTimePickerState(
+            initialHour = startHour,
+            initialMinute = startMinute,
+            is24Hour = DateFormat.is24HourFormat(context)
+        )
+
+        AlertDialog(
+            onDismissRequest = { pendingDate = null }, // tapping outside keeps the old due date
+            title = { Text("Add a time?") },
+            text = { TimePicker(state = timeState) },
+            confirmButton = {
+                TextButton(onClick = {
+                    dueDate = DueDate.withTime(dateForTime, timeState.hour, timeState.minute)
+                    pendingDate = null
+                }) { Text("Set time") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    dueDate = dateForTime // date only
+                    pendingDate = null
+                }) { Text("No time") }
+            }
+        )
+    }
 }

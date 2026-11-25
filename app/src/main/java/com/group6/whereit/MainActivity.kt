@@ -10,6 +10,8 @@ import androidx.appcompat.app.AppCompatActivity // base class for MainActivity
 import androidx.activity.compose.setContent // displays Compose UI
 import androidx.activity.result.contract.ActivityResultContracts // handles permission results
 import androidx.appcompat.app.AppCompatDelegate
+import android.app.UiModeManager // tells Android which mode the launch screen should use
+import android.os.Build // checks the Android version
 
 // JETPACK COMPOSE - UI COMPONENTS
 import androidx.compose.material3.Text // displays text
@@ -293,6 +295,22 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+
+    // When the app goes to the background, tell Android which mode the user picked, so the
+    // launch screen on the next start matches (it is drawn before our code runs, so it
+    // can't read the in-app toggle by itself). Only available on Android 12+.
+    override fun onStop() {
+        super.onStop()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val prefs = getSharedPreferences("whereit_prefs", MODE_PRIVATE)
+            if (prefs.contains("dark_mode")) {
+                val dark = prefs.getBoolean("dark_mode", false)
+                getSystemService(UiModeManager::class.java)?.setApplicationNightMode(
+                    if (dark) UiModeManager.MODE_NIGHT_YES else UiModeManager.MODE_NIGHT_NO
+                )
+            }
+        }
+    }
 
     // retrieve the device's current location and display its coordinates
     private fun fetchAndShowLocation() {
