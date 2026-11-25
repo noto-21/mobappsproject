@@ -163,25 +163,6 @@ class MainActivity : AppCompatActivity() {
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
 
-                                // button to open the map
-                                Button(
-                                    onClick = {
-
-                                        currentScreen.value = "map"
-
-                                        startActivity(
-                                            Intent(
-                                                this@MainActivity,
-                                                MapActivity::class.java
-                                            )
-                                        )
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp)
-
-                                ) {
-                                    Text("Open Map")
-                                }
-
                                 // button to request location and test retrieval
                                 Button(
                                     onClick = {

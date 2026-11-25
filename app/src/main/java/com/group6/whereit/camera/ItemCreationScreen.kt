@@ -116,8 +116,6 @@ fun ItemCreationScreen(
     // date chosen in the date picker, waiting for the optional time step
     var pendingDate by remember { mutableStateOf<Long?>(null) }
 
-    var isMapTouched by remember { mutableStateOf(false) }
-
     // LOCATION: readable address shown in the text field + the coordinates behind it
     var locationText by rememberSaveable(initialLocation) {
         mutableStateOf(initialLocation ?: "")
@@ -228,7 +226,7 @@ fun ItemCreationScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState(), enabled = !isMapTouched)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -331,13 +329,6 @@ fun ItemCreationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(220.dp)
-                    .pointerInteropFilter { event ->
-                        when (event.action) {
-                            MotionEvent.ACTION_DOWN -> isMapTouched = true
-                            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> isMapTouched = false
-                        }
-                        false // don't consume the event; let the map handle it
-                    }
             )
         }
 
