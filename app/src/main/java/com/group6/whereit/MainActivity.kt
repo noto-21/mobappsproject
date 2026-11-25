@@ -270,7 +270,6 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-<<<<<<< HEAD
                         // Dark Mode toggle pinned to the top-right corner of the screen
                         FilledTonalButton(
                             onClick = {
@@ -291,9 +290,6 @@ class MainActivity : AppCompatActivity() {
                         ) {
                             Text(if (isDarkMode.value) "☀️ Light" else "🌙 Dark", maxLines = 1)
                         }
-=======
-
->>>>>>> 772b841ad6ce60c12ca3e169a12497858b0172c2
                     }
                 }
             }
