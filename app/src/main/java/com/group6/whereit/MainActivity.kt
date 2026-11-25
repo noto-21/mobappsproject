@@ -159,28 +159,12 @@ class MainActivity : AppCompatActivity() {
 
                             Row(
                                 //edited to leave room for dark mode toggle button
-                                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(end = 96.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly
+                                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(end = 8.dp).padding(start = 9.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
 
-                                // button to open the map
-                                Button(
-                                    onClick = {
 
-                                        currentScreen.value = "map"
-
-                                        startActivity(
-                                            Intent(
-                                                this@MainActivity,
-                                                MapActivity::class.java
-                                            )
-                                        )
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp)
-
-                                ) {
-                                    Text("Open Map")
-                                }
 
                                 // button to request location and test retrieval
                                 Button(
@@ -191,6 +175,26 @@ class MainActivity : AppCompatActivity() {
 
                                 ) {
                                     Text("Item Library")
+                                }
+
+
+                                // Dark Mode toggle pinned to the top-right corner of the screen
+                                FilledTonalButton(
+                                    onClick = {
+                                        val nextMode = !isDarkMode.value
+                                        isDarkMode.value = nextMode
+                                        prefs.edit().putBoolean("dark_mode", nextMode).apply()
+                                        AppCompatDelegate.setDefaultNightMode(
+                                            if (nextMode) AppCompatDelegate.MODE_NIGHT_YES
+                                            else AppCompatDelegate.MODE_NIGHT_NO
+                                        )
+                                    },
+                                    // same padding and top position as the Open Map / Item Library / Sign Out buttons
+                                    contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp),
+                                    modifier = Modifier
+
+                                ) {
+                                    Text(if (isDarkMode.value) "☀️ Light" else "🌙 Dark", maxLines = 1)
                                 }
 
                                 // button to sign out
@@ -204,6 +208,8 @@ class MainActivity : AppCompatActivity() {
                                 ) {
                                     Text("Sign Out")
                                 }
+
+
 
 
                             }
@@ -269,26 +275,7 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                        // Dark Mode toggle pinned to the top-right corner of the screen
-                        FilledTonalButton(
-                            onClick = {
-                                val nextMode = !isDarkMode.value
-                                isDarkMode.value = nextMode
-                                prefs.edit().putBoolean("dark_mode", nextMode).apply()
-                                AppCompatDelegate.setDefaultNightMode(
-                                    if (nextMode) AppCompatDelegate.MODE_NIGHT_YES
-                                    else AppCompatDelegate.MODE_NIGHT_NO
-                                )
-                            },
-                            // same padding and top position as the Open Map / Item Library / Sign Out buttons
-                            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp),
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .statusBarsPadding()
-                                .padding(end = 8.dp)
-                        ) {
-                            Text(if (isDarkMode.value) "☀️ Light" else "🌙 Dark", maxLines = 1)
-                        }
+
                     }
                 }
             }
