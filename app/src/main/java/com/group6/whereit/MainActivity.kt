@@ -280,13 +280,14 @@ class MainActivity : AppCompatActivity() {
                                     else AppCompatDelegate.MODE_NIGHT_NO
                                 )
                             },
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            // same padding and top position as the Open Map / Item Library / Sign Out buttons
+                            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .statusBarsPadding()
-                                .padding(top = 4.dp, end = 8.dp)
+                                .padding(end = 8.dp)
                         ) {
-                            Text(if (isDarkMode.value) "☀️ Light" else "🌙 Dark")
+                            Text(if (isDarkMode.value) "☀️ Light" else "🌙 Dark", maxLines = 1)
                         }
                     }
                 }
