@@ -168,17 +168,17 @@ class LocationService(private val context: Context)
                                 1,
                                 object : Geocoder.GeocodeListener
                                 {
-                                    override fun onGeocode(addresses: MutableList<Address>)
-                                    {
-                                        val first = addresses.firstOrNull()
-                                        continuation.resume(
-                                            if (first != null) first.latitude to first.longitude else null
-                                        )
+                                    override fun onGeocode(addresses: MutableList<Address>) {
+                                        if (continuation.isActive) {
+                                            val first = addresses.firstOrNull()
+                                            continuation.resume(
+                                                if (first != null) first.latitude to first.longitude else null
+                                            )
+                                        }
                                     }
 
-                                    override fun onError(errorMessage: String?)
-                                    {
-                                        continuation.resume(null)
+                                    override fun onError(errorMessage: String?) {
+                                        if (continuation.isActive) continuation.resume(null)
                                     }
                                 }
                             )
@@ -259,15 +259,15 @@ class LocationService(private val context: Context)
                                 1,
                                 object : Geocoder.GeocodeListener
                                 {
-                                    override fun onGeocode(addresses: MutableList<Address>)
-                                    {
-                                        val best = addresses.firstOrNull()?.let { formatGeocoderAddress(it) }
-                                        continuation.resume(best)
+                                    override fun onGeocode(addresses: MutableList<Address>) {
+                                        if (continuation.isActive) {
+                                            val best = addresses.firstOrNull()?.let { formatGeocoderAddress(it) }
+                                            continuation.resume(best)
+                                        }
                                     }
 
-                                    override fun onError(errorMessage: String?)
-                                    {
-                                        continuation.resume(null)
+                                    override fun onError(errorMessage: String?) {
+                                        if (continuation.isActive) continuation.resume(null)
                                     }
                                 }
                             )

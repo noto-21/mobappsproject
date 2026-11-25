@@ -5,11 +5,19 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.fragment.compose.AndroidFragment
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 
 @SuppressLint("ClickableViewAccessibility")
@@ -21,6 +29,12 @@ fun ItemMap(
     onLocationPicked: (lat: Double, lon: Double, placeName: String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var googleMap by remember { mutableStateOf<GoogleMap?>(null) }
+    var marker by remember { mutableStateOf<Marker?>(null) }
+    var hasInitializedCamera by remember { mutableStateOf(false) }
+
+    val latestOnLocationPicked by rememberUpdatedState(onLocationPicked)
+
     AndroidFragment<SupportMapFragment>(
         modifier = modifier,
         onUpdate = { mapFragment ->
@@ -33,8 +47,11 @@ fun ItemMap(
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                     setOnTouchListener { v, event ->
-                        if (event.action == MotionEvent.ACTION_DOWN) {
-                            v.parent?.requestDisallowInterceptTouchEvent(true)
+                        when (event.action) {
+                            MotionEvent.ACTION_DOWN ->
+                                v.parent?.requestDisallowInterceptTouchEvent(true)
+                            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                                v.parent?.requestDisallowInterceptTouchEvent(false)
                         }
                         false // Pass the touch event through to the map
                     }
@@ -42,29 +59,54 @@ fun ItemMap(
                 container.addView(touchInterceptor)
             }
 
-            mapFragment.getMapAsync { googleMap ->
-                val position = LatLng(latitude, longitude)
-                googleMap.clear()
-                googleMap.addMarker(
-                    MarkerOptions()
-                        .position(position)
-                        .title(markerTitle)
-                )
-                googleMap.moveCamera(
-                    CameraUpdateFactory.newLatLngZoom(position, 15f)
-                )
+            mapFragment.getMapAsync { map ->
+                if (googleMap !== map) {
+                    marker = null
+                    hasInitializedCamera = false
+                    googleMap = map
+                }
 
                 // Tapping a named Google Maps place/building gives its exact POI name
-                googleMap.setOnPoiClickListener { poi ->
+                map.setOnPoiClickListener { poi ->
                     val cleanName = poi.name.replace("\n", ", ").trim()
-                    onLocationPicked(poi.latLng.latitude, poi.latLng.longitude, cleanName)
+                    latestOnLocationPicked(poi.latLng.latitude, poi.latLng.longitude, cleanName)
                 }
 
                 // Tapping anywhere else on the map resolves via geocoding
-                googleMap.setOnMapClickListener { clickedLatLng ->
-                    onLocationPicked(clickedLatLng.latitude, clickedLatLng.longitude, null)
+                map.setOnMapClickListener { clickedLatLng ->
+                    latestOnLocationPicked(clickedLatLng.latitude, clickedLatLng.longitude, null)
                 }
             }
         }
     )
+
+    // Move the waypoint marker and camera whenever coordinates change
+    LaunchedEffect(googleMap, latitude, longitude) {
+        val map = googleMap ?: return@LaunchedEffect
+        val position = LatLng(latitude, longitude)
+
+        val currentMarker = marker
+        if (currentMarker == null) {
+            marker = map.addMarker(
+                MarkerOptions()
+                    .position(position)
+                    .title(markerTitle)
+            )
+        } else {
+            currentMarker.position = position
+        }
+
+        if (!hasInitializedCamera) {
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(position, 15f))
+            hasInitializedCamera = true
+        } else {
+            val targetZoom = maxOf(map.cameraPosition.zoom, 15f)
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(position, targetZoom))
+        }
+    }
+
+    // Update marker title when reverse geocoding completes without moving the camera
+    LaunchedEffect(marker, markerTitle) {
+        marker?.title = markerTitle
+    }
 }

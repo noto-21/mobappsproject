@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -47,11 +49,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import com.group6.whereit.data.DueDate
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -105,6 +109,8 @@ fun ItemCreationScreen(
         mutableStateOf(initialLocation ?: "")
     }
     var isLocating by remember { mutableStateOf(false) }
+    var isGeocoding by remember { mutableStateOf(false) }
+    var reverseGeocodeJob by remember { mutableStateOf<Job?>(null) }
 
     // true once the user types their own location (or the item already has a saved one),
     // so the automatic current-location lookup never overwrites it
@@ -118,18 +124,30 @@ fun ItemCreationScreen(
     // true only when the user manually types in the location field
     var shouldGeocodeText by remember { mutableStateOf(false) }
 
+    suspend fun geocodeLocationText(rawQuery: String) {
+        val query = rawQuery.trim()
+        if (query.length < 3) return
+
+        isGeocoding = true
+        try {
+            val coords = locationService.getCoordinates(query)
+            if (coords != null) {
+                latitude = coords.first
+                longitude = coords.second
+            }
+        } finally {
+            isGeocoding = false
+        }
+    }
+
     LaunchedEffect(locationText, shouldGeocodeText) {
         if (!shouldGeocodeText) return@LaunchedEffect
 
         val query = locationText.trim()
-        if (query.isBlank()) return@LaunchedEffect
+        if (query.length < 3) return@LaunchedEffect
 
         delay(800L.milliseconds) // debounce so we don't query on every keystroke
-        val coords = locationService.getCoordinates(query)
-        if (coords != null) {
-            latitude = coords.first
-            longitude = coords.second
-        }
+        geocodeLocationText(query)
         shouldGeocodeText = false
     }
 
@@ -138,25 +156,29 @@ fun ItemCreationScreen(
     fun fetchCurrentLocation(replaceTypedText: Boolean) {
         scope.launch {
             isLocating = true
-            val location = locationService.getCurrentLocation()
+            try {
+                val location = locationService.getCurrentLocation()
 
-            if (location != null) {
-                // the lookup takes a few seconds; if the user started typing in the meantime,
-                // keep what they typed and don't replace it
-                if (replaceTypedText || !userEnteredLocation) {
-                    latitude = location.latitude
-                    longitude = location.longitude
-                    shouldGeocodeText = false
-                    locationText = locationService.resolveLocationName(
-                        location.latitude,
-                        location.longitude
-                    )
-                    userEnteredLocation = false
+                if (location != null) {
+                    // the lookup takes a few seconds; if the user started typing in the meantime,
+                    // keep what they typed and don't replace it
+                    if (replaceTypedText || !userEnteredLocation) {
+                        reverseGeocodeJob?.cancel()
+                        latitude = location.latitude
+                        longitude = location.longitude
+                        shouldGeocodeText = false
+                        locationText = locationService.resolveLocationName(
+                            location.latitude,
+                            location.longitude
+                        )
+                        userEnteredLocation = false
+                    }
+                } else {
+                    Toast.makeText(context, "Couldn't get your location", Toast.LENGTH_SHORT).show()
                 }
-            } else {
-                Toast.makeText(context, "Couldn't get your location", Toast.LENGTH_SHORT).show()
+            } finally {
+                isLocating = false
             }
-            isLocating = false
         }
     }
 
@@ -204,8 +226,11 @@ fun ItemCreationScreen(
             requestCurrentLocation(replaceTypedText = false)
         } else if (isEditing && locationText.isBlank() && latitude != null && longitude != null) {
             isLocating = true
-            locationText = locationService.resolveLocationName(latitude!!, longitude!!)
-            isLocating = false
+            try {
+                locationText = locationService.resolveLocationName(latitude!!, longitude!!)
+            } finally {
+                isLocating = false
+            }
         }
     }
 
@@ -308,14 +333,26 @@ fun ItemCreationScreen(
         OutlinedTextField(
             value = locationText,
             onValueChange = {
+                reverseGeocodeJob?.cancel()
                 locationText = it
                 userEnteredLocation = true   // the user's text wins over the automatic location
                 shouldGeocodeText = true
             },
             label = { Text("Location") },
-            placeholder = { Text("e.g. Kitchen, top drawer") },
+            placeholder = { Text("e.g. 2000 Simcoe St N, Oshawa") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    shouldGeocodeText = false
+                    scope.launch { geocodeLocationText(locationText) }
+                }
+            ),
             supportingText = {
-                if (isLocating) Text("Resolving location...")
+                when {
+                    isLocating -> Text("Resolving location...")
+                    isGeocoding -> Text("Finding address on map...")
+                }
             },
             modifier = Modifier.fillMaxWidth()
         )
@@ -334,6 +371,7 @@ fun ItemCreationScreen(
                 longitude = lon,
                 markerTitle = locationText.ifBlank { "Item location" },
                 onLocationPicked = { newLat, newLon, poiName ->
+                    reverseGeocodeJob?.cancel()
                     latitude = newLat
                     longitude = newLon
                     userEnteredLocation = true
@@ -342,10 +380,13 @@ fun ItemCreationScreen(
                     if (!poiName.isNullOrBlank()) {
                         locationText = poiName
                     } else {
-                        scope.launch {
+                        reverseGeocodeJob = scope.launch {
                             isLocating = true
-                            locationText = locationService.resolveLocationName(newLat, newLon)
-                            isLocating = false
+                            try {
+                                locationText = locationService.resolveLocationName(newLat, newLon)
+                            } finally {
+                                isLocating = false
+                            }
                         }
                     }
                 },
