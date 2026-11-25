@@ -1,56 +1,65 @@
 package com.group6.whereit.camera
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
+import androidx.camera.video.FileOutputOptions
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoRecordEvent
+import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
+import androidx.camera.view.video.AudioConfig
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
 import java.io.File
 import java.util.Locale
-import android.annotation.SuppressLint
-import androidx.camera.video.FileOutputOptions
-import androidx.camera.video.Recording
-import androidx.camera.video.VideoRecordEvent
-import androidx.camera.view.CameraController
-import androidx.camera.view.video.AudioConfig
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.graphics.Color
-import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
-
 
 @Composable
 fun CameraScreen(
@@ -59,18 +68,55 @@ fun CameraScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-// permission to use camera and remembers when permission is given so it doesn't ask again
-    var hasCameraPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                    PackageManager.PERMISSION_GRANTED
+    val activity = remember(context) { context.findActivity() }
+
+    val requiredPermissions = remember {
+        arrayOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
         )
     }
+
+    fun checkPermission(permission: String): Boolean =
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+    var hasCameraPermission by remember {
+        mutableStateOf(checkPermission(Manifest.permission.CAMERA))
+    }
     var hasAudioPermission by remember {
+        mutableStateOf(checkPermission(Manifest.permission.RECORD_AUDIO))
+    }
+    var hasLocationPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-                    PackageManager.PERMISSION_GRANTED
+            checkPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
+                    checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
         )
+    }
+
+    var requestedFromButton by remember { mutableStateOf(false) }
+    var hadRationaleBeforeRequest by remember { mutableStateOf(false) }
+
+    fun refreshPermissions() {
+        hasCameraPermission = checkPermission(Manifest.permission.CAMERA)
+        hasAudioPermission = checkPermission(Manifest.permission.RECORD_AUDIO)
+        hasLocationPermission =
+                checkPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
+                        checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+    }
+
+    // Re-check permissions if the user grants them in Android App Settings and comes back
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshPermissions()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -78,40 +124,78 @@ fun CameraScreen(
     ) { permissions ->
         hasCameraPermission = permissions[Manifest.permission.CAMERA] ?: hasCameraPermission
         hasAudioPermission = permissions[Manifest.permission.RECORD_AUDIO] ?: hasAudioPermission
+        hasLocationPermission =
+                (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) ||
+                        (permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true) ||
+                        hasLocationPermission
+
+        if (requestedFromButton && !hasCameraPermission) {
+            val hasRationaleAfter = activity != null &&
+                    ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
+
+            // Android suppressed the popup because the permission was permanently denied
+            if (!hadRationaleBeforeRequest && !hasRationaleAfter) {
+                Toast.makeText(
+                    context,
+                    "Please enable Camera permission in App Settings",
+                    Toast.LENGTH_LONG
+                ).show()
+                val settingsIntent = Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.fromParts("package", context.packageName, null)
+                )
+                context.startActivity(settingsIntent)
+            }
+        }
+        requestedFromButton = false
+    }
+
+    fun requestAllPermissions(fromButton: Boolean) {
+        val missingPermissions = requiredPermissions.filter { !checkPermission(it) }.toTypedArray()
+        if (missingPermissions.isEmpty()) {
+            refreshPermissions()
+            return
+        }
+
+        requestedFromButton = fromButton
+        hadRationaleBeforeRequest = activity != null &&
+                missingPermissions.any {
+                    ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
+                }
+        permissionLauncher.launch(missingPermissions)
     }
 
     LaunchedEffect(Unit) {
-        if (!hasCameraPermission || !hasAudioPermission) {
-            permissionLauncher.launch(
-                arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
-            )
+        if (!hasCameraPermission || !hasAudioPermission || !hasLocationPermission) {
+            requestAllPermissions(fromButton = false)
         }
     }
 
     if (!hasCameraPermission) {
         Column(
-            modifier = modifier.fillMaxSize().padding(24.dp),
+            modifier = modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("WhereIt? needs the camera to photograph your items.")
+            Text(
+                text = "WhereIt? needs camera, microphone, and location permissions to capture and tag your items.",
+                textAlign = TextAlign.Center
+            )
             Button(
-                onClick = {
-                    permissionLauncher.launch(
-                        arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
-                    )
-                },
+                onClick = { requestAllPermissions(fromButton = true) },
                 modifier = Modifier.padding(top = 16.dp)
-            ) { Text("Grant camera permission") }
+            ) {
+                Text("Grant Permissions")
+            }
         }
         return
     }
 
     val controller = remember {
         LifecycleCameraController(context).apply {
-            // Enable BOTH Photo and Video use cases (Video is disabled by default)
-            setEnabledUseCases(
-                CameraController.IMAGE_CAPTURE
-            )
+            setEnabledUseCases(CameraController.IMAGE_CAPTURE)
         }
     }
 
@@ -120,7 +204,7 @@ fun CameraScreen(
     var activeRecording by remember { mutableStateOf<Recording?>(null) }
     var recordingSeconds by remember { mutableIntStateOf(0) }
     var isFinalizingVideo by remember { mutableStateOf(false) }
-    //for remembering video after pressing stop
+    // for remembering video after pressing stop
     val recordingHolder = remember { arrayOfNulls<Recording>(1) }
 
     LaunchedEffect(isVideoMode) {
@@ -152,7 +236,6 @@ fun CameraScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-
         AndroidView(
             factory = { ctx -> PreviewView(ctx).apply { this.controller = controller } },
             modifier = Modifier.fillMaxSize()
@@ -184,8 +267,6 @@ fun CameraScreen(
         ) {
             // Hide mode switcher while actively recording
             if (activeRecording == null) {
-                // Solid backgrounds + a border so both chips look like buttons on top of the
-                // camera preview (the default unselected chip is transparent and hard to see)
                 val chipColors = FilterChipDefaults.filterChipColors(
                     containerColor = Color.Black.copy(alpha = 0.6f),
                     labelColor = Color.White,
@@ -213,12 +294,12 @@ fun CameraScreen(
             }
 
             if (!isVideoMode) {
-                //photo capture mode
+                // Photo capture mode
                 Button(
                     onClick = {
                         isCapturing = true
                         val file =
-                            File(context.filesDir, "photos/${System.currentTimeMillis()}.jpg")
+                                File(context.filesDir, "photos/${System.currentTimeMillis()}.jpg")
                         file.parentFile?.mkdirs()
 
                         controller.takePicture(
@@ -241,33 +322,28 @@ fun CameraScreen(
                             }
                         )
                     },
-                    enabled = !isCapturing,
+                    enabled = !isCapturing
                 ) {
                     Text(if (isCapturing) "Saving..." else "Take Photo")
                 }
             } else {
-
-                // Video Capture mode
+                // Video capture mode
                 val isRecording = activeRecording != null
                 Button(
                     onClick = {
                         if (isRecording) {
                             isFinalizingVideo = true
                             activeRecording?.stop()
-
                         } else {
                             val file =
-                                File(context.filesDir, "videos/${System.currentTimeMillis()}.mp4")
+                                    File(context.filesDir, "videos/${System.currentTimeMillis()}.mp4")
                             file.parentFile?.mkdirs()
 
                             val outputOptions = FileOutputOptions.Builder(file).build()
-                            val currentlyHasAudio = ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.RECORD_AUDIO
-                            ) == PackageManager.PERMISSION_GRANTED
+                            val currentlyHasAudio = checkPermission(Manifest.permission.RECORD_AUDIO)
 
                             @SuppressLint("MissingPermission")
-                            val audioConfig = AudioConfig.create(false) //change to currentlyHasAudio for audiovideos
+                            val audioConfig = AudioConfig.create(false) // change to currentlyHasAudio for audio videos
 
                             val recording = controller.startRecording(
                                 outputOptions,
@@ -319,4 +395,10 @@ fun CameraScreen(
             }
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

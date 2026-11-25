@@ -32,6 +32,9 @@ import androidx.compose.ui.res.painterResource // loads an image from res/drawab
 import com.group6.whereit.R // gives access to app resources like the logo
 import androidx.compose.foundation.shape.RoundedCornerShape // rounded corner shape
 import androidx.compose.ui.draw.clip // clips an element to a shape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
 
 // TEXT STYLING AND KEYBOARD INPUT
 import androidx.compose.ui.text.font.FontWeight // controls text boldness
@@ -71,7 +74,11 @@ fun AuthScreen(onAuthSuccess: () -> Unit){
     val isSignUp = remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 24.dp),
 
         // center everything vertically on the screen
         verticalArrangement = Arrangement.Center,
