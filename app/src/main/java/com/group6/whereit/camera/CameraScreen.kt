@@ -60,6 +60,8 @@ import kotlinx.coroutines.delay
 import java.io.File
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 
 @Composable
 fun CameraScreen(
@@ -261,6 +263,7 @@ fun CameraScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
                 .padding(bottom = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)

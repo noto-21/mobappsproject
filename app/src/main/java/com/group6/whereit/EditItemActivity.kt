@@ -16,6 +16,7 @@ import com.group6.whereit.data.WhereItDatabase
 import com.group6.whereit.ui.WhereItTheme
 import android.content.res.Configuration
 import kotlinx.coroutines.launch
+import androidx.activity.enableEdgeToEdge
 
 class EditItemActivity : AppCompatActivity() {
 
@@ -33,6 +34,8 @@ class EditItemActivity : AppCompatActivity() {
         val systemDark = (resources.configuration.uiMode and
                 Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val darkMode = prefs.getBoolean("dark_mode", systemDark)
+
+        enableEdgeToEdge()
 
         setContent {
             var item by remember { mutableStateOf<SpotItem?>(null) }
